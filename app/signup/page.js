@@ -47,25 +47,23 @@ export default function Signup() {
   return (
     <div className="min-h-screen flex bg-white">
       {/* Left side - Benefits/Features */}
-      <div className="hidden lg:flex lg:w-1/2 bg-lime-50 flex-col justify-center px-12">
+      <div className="hidden lg:flex lg:w-1/2 bg-blue-50 flex-col justify-center px-12">
         <div className="space-y-12">
           <div>
             <h1 className="text-4xl font-bold text-gray-900 mb-4">
-              Start Your Journey with{" "}
-              <span className="text-lime-600">Equico</span>
+              Join <span className="text-blue-600">Fruit Affairs</span> Delivery
             </h1>
             <p className="text-gray-600 text-lg">
-              Join our community of successful users and start your 14-day free
-              trial
+              Start delivering fresh fruits and earning with us today
             </p>
           </div>
 
           <div className="space-y-8">
             {/* Benefit Items */}
             <div className="flex items-start space-x-4">
-              <div className="flex-shrink-0 w-12 h-12 bg-lime-100 rounded-xl flex items-center justify-center">
+              <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
                 <svg
-                  className="w-6 h-6 text-lime-600"
+                  className="w-6 h-6 text-blue-600"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -79,17 +77,19 @@ export default function Signup() {
                 </svg>
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900 mb-1">Free Trial</h3>
+                <h3 className="font-semibold text-gray-900 mb-1">
+                  Competitive Earnings
+                </h3>
                 <p className="text-gray-600">
-                  Try all features free for 14 days, no credit card required
+                  Earn up to ₹1000 per day with flexible hours
                 </p>
               </div>
             </div>
 
             <div className="flex items-start space-x-4">
-              <div className="flex-shrink-0 w-12 h-12 bg-lime-100 rounded-xl flex items-center justify-center">
+              <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
                 <svg
-                  className="w-6 h-6 text-lime-600"
+                  className="w-6 h-6 text-blue-600"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -98,22 +98,24 @@ export default function Signup() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth="2"
-                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900 mb-1">Easy Setup</h3>
+                <h3 className="font-semibold text-gray-900 mb-1">
+                  Flexible Schedule
+                </h3>
                 <p className="text-gray-600">
-                  Get started in minutes with our guided onboarding
+                  Choose your own hours and delivery areas
                 </p>
               </div>
             </div>
 
             <div className="flex items-start space-x-4">
-              <div className="flex-shrink-0 w-12 h-12 bg-lime-100 rounded-xl flex items-center justify-center">
+              <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
                 <svg
-                  className="w-6 h-6 text-lime-600"
+                  className="w-6 h-6 text-blue-600"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -127,9 +129,11 @@ export default function Signup() {
                 </svg>
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900 mb-1">Community</h3>
+                <h3 className="font-semibold text-gray-900 mb-1">
+                  Dedicated Support
+                </h3>
                 <p className="text-gray-600">
-                  Join thousands of satisfied users worldwide
+                  24/7 support team to help you succeed
                 </p>
               </div>
             </div>
@@ -138,13 +142,16 @@ export default function Signup() {
           {/* Testimonial */}
           <div className="pt-8 border-t border-gray-200">
             <div className="italic text-gray-600 mb-4">
-              "This platform has transformed how we work. Highly recommended!"
+              "I love the flexibility and earnings with Fruit Affairs. Great
+              platform for delivery partners!"
             </div>
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
               <div>
-                <div className="font-medium text-gray-900">Jane Smith</div>
-                <div className="text-sm text-gray-500">CEO at TechCorp</div>
+                <div className="font-medium text-gray-900">Rahul Kumar</div>
+                <div className="text-sm text-gray-500">
+                  Delivery Partner since 2023
+                </div>
               </div>
             </div>
           </div>
@@ -153,16 +160,16 @@ export default function Signup() {
 
       {/* Right side - Signup Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center px-8">
-        <div className="max-w-md w-full space-y-8 transform transition-all duration-300 ease-in-out hover:scale-[1.01]">
+        <div className="max-w-md w-full space-y-8">
           <div>
-            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 transition-transform duration-300 ease-in-out hover:scale-105">
-              Join Us Today
+            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+              Become a Delivery Partner
             </h2>
             <p className="mt-2 text-center text-sm text-gray-600">
               Or{" "}
               <Link
                 href="/login"
-                className="font-medium text-lime-600 hover:text-lime-500 transition-all duration-300 ease-in-out hover:underline"
+                className="font-medium text-blue-600 hover:text-blue-500"
               >
                 sign in to your account
               </Link>
@@ -175,12 +182,12 @@ export default function Signup() {
             onSubmit={handleSignUp}
           >
             {error && (
-              <div className="bg-red-50 p-4 rounded-xl text-red-500 border border-red-100 animate-fadeIn">
+              <div className="bg-red-50 p-4 rounded-xl text-red-500 border border-red-100">
                 {error}
               </div>
             )}
             {message && (
-              <div className="bg-green-50 p-4 rounded-xl text-green-500 border border-green-100 animate-fadeIn">
+              <div className="bg-green-50 p-4 rounded-xl text-green-500 border border-green-100">
                 {message}
               </div>
             )}
@@ -192,9 +199,9 @@ export default function Signup() {
                   required
                   className={`appearance-none rounded-t-xl relative block w-full px-3 py-2 border ${
                     focusedInput === "email"
-                      ? "border-lime-500"
+                      ? "border-blue-500"
                       : "border-gray-200"
-                  } placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-lime-500 focus:border-lime-500 focus:z-10 sm:text-sm transition-all duration-300`}
+                  } placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm transition-all duration-300`}
                   placeholder="Email address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -207,7 +214,7 @@ export default function Signup() {
                   }`}
                 >
                   {email && email.includes("@") && (
-                    <span className="text-lime-500">✓</span>
+                    <span className="text-blue-500">✓</span>
                   )}
                 </div>
               </div>
@@ -218,9 +225,9 @@ export default function Signup() {
                   required
                   className={`appearance-none rounded-b-xl relative block w-full px-3 py-2 border ${
                     focusedInput === "password"
-                      ? "border-lime-500"
+                      ? "border-blue-500"
                       : "border-gray-200"
-                  } placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-lime-500 focus:border-lime-500 focus:z-10 sm:text-sm transition-all duration-300`}
+                  } placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm transition-all duration-300`}
                   placeholder="Password (min. 6 characters)"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -233,7 +240,7 @@ export default function Signup() {
                   }`}
                 >
                   {password && password.length >= 6 && (
-                    <span className="text-lime-500">✓</span>
+                    <span className="text-blue-500">✓</span>
                   )}
                 </div>
               </div>
@@ -247,10 +254,10 @@ export default function Signup() {
                   ${
                     loading === "success"
                       ? "bg-green-500"
-                      : "bg-lime-600 hover:bg-lime-700"
+                      : "bg-blue-600 hover:bg-blue-700"
                   } 
-                  transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-lime-500 
-                  disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02]`}
+                  transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 
+                  disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 {loading === "success" ? (
                   "Account created!"
@@ -287,12 +294,12 @@ export default function Signup() {
 
           {/* Add terms and privacy notice */}
           <div className="text-sm text-gray-500 text-center mt-4">
-            By signing up, you agree to our{" "}
-            <a href="#" className="text-lime-600 hover:text-lime-500">
+            By signing up, you agree to Fruit Affairs'{" "}
+            <a href="#" className="text-blue-600 hover:text-blue-500">
               Terms of Service
             </a>{" "}
             and{" "}
-            <a href="#" className="text-lime-600 hover:text-lime-500">
+            <a href="#" className="text-blue-600 hover:text-blue-500">
               Privacy Policy
             </a>
           </div>
@@ -352,40 +359,6 @@ export default function Signup() {
           </div>
         </div>
       </div>
-
-      <style jsx global>{`
-        @keyframes shake {
-          0%,
-          100% {
-            transform: translateX(0);
-          }
-          25% {
-            transform: translateX(-10px);
-          }
-          75% {
-            transform: translateX(10px);
-          }
-        }
-
-        .shake {
-          animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
-        }
-
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-fadeIn {
-          animation: fadeIn 0.3s ease-out forwards;
-        }
-      `}</style>
     </div>
   );
 }
