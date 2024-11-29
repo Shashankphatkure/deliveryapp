@@ -1,73 +1,98 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 export default function Penalties() {
+  const supabase = createClientComponentClient();
+  const [penalties, setPenalties] = useState({ active: [], resolved: [] });
   const [activeTab, setActiveTab] = useState("active");
   const [showAppealModal, setShowAppealModal] = useState(false);
   const [selectedPenalty, setSelectedPenalty] = useState(null);
   const [appealReason, setAppealReason] = useState("");
+
+  useEffect(() => {
+    fetchPenalties();
+  }, []);
+
+  const fetchPenalties = async () => {
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser();
+
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("auth_id", authUser.id)
+      .single();
+
+    if (userError) {
+      console.error("Error fetching user:", userError);
+      return;
+    }
+
+    console.log("User data:", userData);
+
+    const { data, error } = await supabase
+      .from("penalties")
+      .select(
+        `
+        *,
+        orders (id)
+      `
+      )
+      .eq("driver_id", userData.id);
+
+    console.log("Raw penalties data:", data);
+
+    if (error) {
+      console.error("Error fetching penalties:", error);
+      return;
+    }
+
+    const transformedPenalties = data.map((p) => ({
+      id: p.id,
+      type: p.reason_type === "predefined" ? p.predefined_reason_id : "Custom",
+      amount: `₹${p.amount}`,
+      date: new Date(p.created_at).toLocaleDateString(),
+      order: `#${p.orders?.id || "N/A"}`,
+      status: mapStatus(p.status, p.appeal_status),
+      description: p.reason,
+      canAppeal: p.can_appeal,
+      severity: p.severity || "medium",
+      resolution: p.resolution_notes,
+    }));
+
+    console.log("Transformed penalties:", transformedPenalties);
+
+    setPenalties({
+      active: transformedPenalties.filter((p) => p.status !== "Resolved"),
+      resolved: transformedPenalties.filter((p) => p.status === "Resolved"),
+    });
+  };
 
   const handleAppeal = (penalty) => {
     setSelectedPenalty(penalty);
     setShowAppealModal(true);
   };
 
-  const submitAppeal = () => {
-    // Handle appeal submission logic here
-    console.log({ penaltyId: selectedPenalty.id, appealReason });
+  const submitAppeal = async () => {
+    const { error } = await supabase
+      .from("penalties")
+      .update({
+        appeal_status: "pending",
+        appeal_reason: appealReason,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", selectedPenalty.id);
+
+    if (error) {
+      console.error("Error submitting appeal:", error);
+      return;
+    }
+
     setShowAppealModal(false);
     setAppealReason("");
-  };
-
-  const penalties = {
-    active: [
-      {
-        id: 1,
-        type: "Late Delivery",
-        amount: "₹100",
-        date: "Today, 2:30 PM",
-        order: "#1234",
-        status: "Active",
-        description: "Delivery exceeded estimated time by 25 minutes",
-        canAppeal: true,
-        severity: "medium",
-      },
-      {
-        id: 2,
-        type: "Order Cancellation",
-        amount: "₹150",
-        date: "Yesterday",
-        order: "#1235",
-        status: "Under Review",
-        description: "Order cancelled without valid reason",
-        canAppeal: true,
-        severity: "high",
-      },
-    ],
-    resolved: [
-      {
-        id: 3,
-        type: "Improper Delivery",
-        amount: "₹50",
-        date: "15 March, 2024",
-        order: "#1230",
-        status: "Resolved",
-        description: "Food items damaged during delivery",
-        resolution: "Penalty reduced after review",
-        severity: "low",
-      },
-      {
-        id: 4,
-        type: "Late Delivery",
-        amount: "₹75",
-        date: "14 March, 2024",
-        order: "#1229",
-        status: "Appealed Successfully",
-        description: "Delivery delayed due to traffic",
-        resolution: "Penalty waived off due to valid reason",
-        severity: "medium",
-      },
-    ],
+    fetchPenalties(); // Refresh the penalties list
   };
 
   const getSeverityColor = (severity) => {
@@ -83,6 +108,15 @@ export default function Penalties() {
     }
   };
 
+  const mapStatus = (status, appealStatus) => {
+    if (appealStatus === "pending") return "Under Review";
+    if (appealStatus === "approved") return "Appealed Successfully";
+    if (status === "processed") return "Active";
+    if (status === "cancelled") return "Resolved";
+    if (status === "pending") return "Active";
+    return status;
+  };
+
   return (
     <div className="p-4">
       <h1 className="text-2xl font-bold mb-4">Penalties</h1>
@@ -92,15 +126,17 @@ export default function Penalties() {
         <div className="grid grid-cols-3 gap-4">
           <div>
             <p className="text-gray-600 text-sm">Total Penalties</p>
-            <p className="text-2xl font-bold">₹375.00</p>
+            <p className="text-2xl font-bold">
+              ₹{penalties.active.length + penalties.resolved.length}.00
+            </p>
           </div>
           <div>
             <p className="text-gray-600 text-sm">Active Penalties</p>
-            <p className="text-2xl font-bold">2</p>
+            <p className="text-2xl font-bold">{penalties.active.length}</p>
           </div>
           <div>
             <p className="text-gray-600 text-sm">Resolved</p>
-            <p className="text-2xl font-bold">2</p>
+            <p className="text-2xl font-bold">{penalties.resolved.length}</p>
           </div>
         </div>
       </div>
