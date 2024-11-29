@@ -1,6 +1,53 @@
+"use client";
 import Link from "next/link";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 
 export default function Profile() {
+  const router = useRouter();
+  const supabase = createClientComponentClient();
+  const [userData, setUserData] = useState({ full_name: "Loading..." });
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        // Get current user
+        const {
+          data: { user },
+          error: authError,
+        } = await supabase.auth.getUser();
+        if (authError) throw authError;
+
+        // Get user details from users table
+        const { data, error } = await supabase
+          .from("users")
+          .select("full_name")
+          .eq("auth_id", user.id)
+          .single();
+
+        if (error) throw error;
+        if (data) {
+          setUserData(data);
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error.message);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      router.push("/login");
+    } catch (error) {
+      console.error("Error logging out:", error.message);
+    }
+  };
+
   return (
     <div className="p-4">
       <div className="flex justify-between items-start mb-4">
@@ -33,7 +80,9 @@ export default function Profile() {
             {/* Profile image will go here */}
           </div>
           <div>
-            <h2 className="text-xl font-semibold">John Doe</h2>
+            <h2 className="text-xl font-semibold">
+              {userData.full_name || "Update your profile"}
+            </h2>
             <p className="text-gray-600">ID: DRV123456</p>
             <div className="flex items-center mt-1">
               <svg
@@ -204,7 +253,10 @@ export default function Profile() {
             Reviews
           </a>
 
-          <button className="w-full flex items-center p-4 text-red-600">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center p-4 text-red-600 hover:bg-red-50 transition-colors"
+          >
             <svg
               className="w-5 h-5 mr-3"
               fill="none"

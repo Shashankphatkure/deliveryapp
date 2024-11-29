@@ -20,14 +20,28 @@ export default function Signup() {
     setMessage(null);
 
     try {
-      const { error } = await supabase.auth.signUp({
+      // 1. Sign up with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
       });
 
-      if (error) throw error;
+      if (authError) throw authError;
 
-      // Add success animation
+      // 2. Create user record in users table
+      const { error: userError } = await supabase.from("users").insert([
+        {
+          email: email,
+          auth_id: authData.user.id,
+          is_active: true,
+          created_at: new Date(),
+          updated_at: new Date(),
+        },
+      ]);
+
+      if (userError) throw userError;
+
+      // Success handling
       setLoading("success");
       setTimeout(() => {
         setMessage("Check your email for the confirmation link!");

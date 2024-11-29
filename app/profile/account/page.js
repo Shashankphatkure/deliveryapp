@@ -1,7 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 export default function AccountSettings() {
+  const supabase = createClientComponentClient();
   const [activeSection, setActiveSection] = useState("personal");
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -27,6 +29,60 @@ export default function AccountSettings() {
     aadharNumber: "XXXX XXXX XXXX 5678",
   });
 
+  // Add loading state
+  const [loading, setLoading] = useState(true);
+
+  // Fetch user data on component mount
+  useEffect(() => {
+    async function loadUserData() {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data, error } = await supabase
+          .from("users")
+          .select("*")
+          .eq("auth_id", user.id)
+          .single();
+
+        if (error) throw error;
+
+        if (data) {
+          setFormData({
+            fullName: data.full_name || "",
+            email: data.email || "",
+            phone: data.phone || "",
+            alternatePhone: data.alternate_phone || "",
+            address: data.address || "",
+            profileImage: data.photo || null,
+            vehicleType: data.vehicle_type || "",
+            vehicleNumber: data.vehicle_number || "",
+            vehicleModel: data.vehicle_model || "",
+            vehicleYear: data.vehicle_year || "",
+            licenseNumber: data.driving_license || "",
+            licenseExpiry: data.license_expiry || "",
+            insuranceNumber: data.insurance_number || "",
+            insuranceExpiry: data.insurance_expiry || "",
+            bankName: data.bank_name || "",
+            accountNumber: data.bank_account_no || "",
+            ifscCode: data.bank_ifsc_code || "",
+            upiId: data.upi_id || "",
+            panNumber: data.pan_card_number || "",
+            aadharNumber: data.aadhar_no || "",
+          });
+        }
+      } catch (error) {
+        console.error("Error loading user data:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadUserData();
+  }, [supabase]);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -35,19 +91,84 @@ export default function AccountSettings() {
     }));
   };
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      // Handle image upload
-      console.log("Image uploaded:", file);
+  const handleImageUpload = async (e) => {
+    try {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${user.id}-${Math.random()}.${fileExt}`;
+      const filePath = `profile-photos/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("photos")
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { error: updateError } = await supabase
+        .from("users")
+        .update({ photo: filePath })
+        .eq("auth_id", user.id);
+
+      if (updateError) throw updateError;
+
+      setFormData((prev) => ({ ...prev, profileImage: filePath }));
+    } catch (error) {
+      console.error("Error uploading image:", error);
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle form submission
-    console.log("Form submitted:", formData);
-    setIsEditing(false);
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Create update object
+      const updateData = {
+        full_name: formData.fullName,
+        phone: formData.phone,
+        alternate_phone: formData.alternatePhone,
+        address: formData.address,
+        vehicle_type: formData.vehicleType,
+        vehicle_number: formData.vehicleNumber,
+        vehicle_model: formData.vehicleModel,
+        vehicle_year: formData.vehicleYear,
+        driving_license: formData.licenseNumber,
+        insurance_number: formData.insuranceNumber,
+        bank_name: formData.bankName,
+        bank_account_no: formData.accountNumber,
+        bank_ifsc_code: formData.ifscCode,
+        upi_id: formData.upiId,
+        pan_card_number: formData.panNumber,
+        aadhar_no: formData.aadharNumber,
+        // Only include date fields if they have a value
+        ...(formData.licenseExpiry
+          ? { license_expiry: formData.licenseExpiry }
+          : {}),
+        ...(formData.insuranceExpiry
+          ? { insurance_expiry: formData.insuranceExpiry }
+          : {}),
+      };
+
+      const { error } = await supabase
+        .from("users")
+        .update(updateData)
+        .eq("auth_id", user.id);
+
+      if (error) throw error;
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Error updating user data:", error);
+    }
   };
 
   const sections = [
@@ -57,6 +178,11 @@ export default function AccountSettings() {
     { id: "bank", label: "Bank Details" },
     { id: "preferences", label: "Preferences" },
   ];
+
+  // Add loading state to return
+  if (loading) {
+    return <div className="p-4">Loading...</div>;
+  }
 
   return (
     <div className="p-4">
