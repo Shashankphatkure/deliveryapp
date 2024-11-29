@@ -1,7 +1,8 @@
 "use client";
-import { useState, use } from "react";
+import { useState, use, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 const ORDER_STATUSES = [
   {
@@ -88,52 +89,19 @@ const getStatusStyle = (status) => {
   return styles[status] || styles.accepted;
 };
 
-export default function OrderDetails({ params }) {
-  const { id } = use(params);
-  const router = useRouter();
-  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
-  const [showCancelModal, setShowCancelModal] = useState(false);
-  const [showSupportModal, setShowSupportModal] = useState(false);
-  const [deliveryMethod, setDeliveryMethod] = useState("");
-  const [otherMethod, setOtherMethod] = useState("");
-  const [cancelReason, setCancelReason] = useState("");
-  const [photoProof, setPhotoProof] = useState(null);
-  const [currentStatus, setCurrentStatus] = useState("accepted");
+const StatusSelector = ({ currentStatus, handleStatusChange }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
-
-  const handleDeliverySubmit = () => {
-    // Handle delivery completion logic here
-    console.log({
-      deliveryMethod,
-      otherMethod,
-      photoProof,
-    });
-    setShowDeliveryModal(false);
-  };
-
-  const handleCancellation = () => {
-    // Handle cancellation logic here
-    console.log({ cancelReason });
-    setShowCancelModal(false);
-  };
-
-  const handleSupportSubmit = () => {
-    // Handle support contact logic here
-    setShowSupportModal(false);
-  };
-
-  const handleStatusChange = (newStatus) => {
-    setCurrentStatus(newStatus);
-    // Here you would typically make an API call to update the status
-    console.log(`Status updated to: ${newStatus}`);
-  };
 
   const handleMouseDown = (e) => {
     setIsDragging(true);
     setStartX(e.pageX - e.currentTarget.offsetLeft);
     setScrollLeft(e.currentTarget.scrollLeft);
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
   };
 
   const handleMouseMove = (e) => {
@@ -144,81 +112,251 @@ export default function OrderDetails({ params }) {
     e.currentTarget.scrollLeft = scrollLeft - walk;
   };
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  const StatusSelector = () => (
-    <div className="bg-white rounded-lg shadow p-4 mb-4">
-      <h2 className="font-semibold mb-4">Order Status</h2>
-      <div
-        className="flex space-x-4 overflow-x-auto pb-2 cursor-grab active:cursor-grabbing"
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-      >
-        {ORDER_STATUSES.map((status, index) => {
-          const isActive = currentStatus === status.id;
-          const isPast =
-            ORDER_STATUSES.findIndex((s) => s.id === currentStatus) >
-            ORDER_STATUSES.findIndex((s) => s.id === status.id);
-
-          return (
-            <div
-              key={status.id}
-              className={`flex-shrink-0 relative ${
-                index < ORDER_STATUSES.length - 1
-                  ? 'after:content-[""] after:absolute after:top-1/2 after:right-[-1rem] after:w-4 after:h-0.5 after:bg-gray-200'
-                  : ""
-              }`}
+  return (
+    <div
+      className="flex overflow-x-auto pb-4 mb-4 hide-scrollbar"
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseUp}
+    >
+      <div className="flex space-x-4">
+        {ORDER_STATUSES.map((status) => (
+          <button
+            key={status.id}
+            onClick={() => handleStatusChange(status.id)}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+              currentStatus === status.id
+                ? `${status.bgColor} ${status.color}`
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              <button
-                onClick={() => handleStatusChange(status.id)}
-                className={`flex flex-col items-center space-y-2 p-3 rounded-lg transition-all ${
-                  isActive
-                    ? status.bgColor
-                    : isPast
-                    ? "bg-gray-100"
-                    : "bg-white"
-                }`}
-              >
-                <div
-                  className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${
-                    isActive
-                      ? `${status.color} border-current`
-                      : isPast
-                      ? "border-gray-400 text-gray-400"
-                      : "border-gray-200 text-gray-400"
-                  }`}
-                >
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    {status.icon}
-                  </svg>
-                </div>
-                <span
-                  className={`text-sm font-medium ${
-                    isActive
-                      ? status.color
-                      : isPast
-                      ? "text-gray-600"
-                      : "text-gray-400"
-                  }`}
-                >
-                  {status.label}
-                </span>
-              </button>
-            </div>
-          );
-        })}
+              {status.icon}
+            </svg>
+            <span>{status.label}</span>
+          </button>
+        ))}
       </div>
     </div>
   );
+};
+
+export default function OrderDetails({ params }) {
+  const unwrappedParams = use(params);
+  const { id } = unwrappedParams;
+  const router = useRouter();
+  const supabase = createClientComponentClient();
+
+  const [order, setOrder] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showSupportModal, setShowSupportModal] = useState(false);
+  const [deliveryMethod, setDeliveryMethod] = useState("");
+  const [otherMethod, setOtherMethod] = useState("");
+  const [cancelReason, setCancelReason] = useState("");
+  const [photoProof, setPhotoProof] = useState(null);
+  const [currentStatus, setCurrentStatus] = useState("accepted");
+
+  useEffect(() => {
+    if (id) {
+      fetchOrder();
+    }
+  }, [id]);
+
+  const fetchOrder = async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      // First get the user's record from the users table
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("auth_id", user.id)
+        .single();
+
+      if (userError) throw userError;
+      if (!userData) {
+        console.error("No user record found");
+        return;
+      }
+
+      // Fetch the specific order with correct column names
+      const { data, error } = await supabase
+        .from("orders")
+        .select(
+          `
+          *,
+          driver:users!fk_orders_driver (
+            full_name,
+            phone,
+            vehicle_number,
+            vehicle_type
+          ),
+          store:stores (
+            name,
+            address,
+            phone
+          ),
+          customer:customers (
+            full_name,
+            phone,
+            address,
+            homeaddress,
+            workaddress
+          )
+        `
+        )
+        .eq("id", id)
+        .eq("driverid", userData.id)
+        .single();
+
+      if (error) throw error;
+
+      setOrder(data);
+      if (data.status) {
+        setCurrentStatus(data.status);
+      }
+    } catch (error) {
+      console.error("Error fetching order:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStatusChange = async (newStatus) => {
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ status: newStatus })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      setCurrentStatus(newStatus);
+      // Refresh order data
+      fetchOrder();
+    } catch (error) {
+      console.error("Error updating status:", error);
+    }
+  };
+
+  const handleDeliverySubmit = async () => {
+    try {
+      if (!deliveryMethod) {
+        alert("Please select a delivery method");
+        return;
+      }
+
+      // Start with the basic update data
+      const updateData = {
+        status: "delivered",
+        completiontime: new Date().toISOString(),
+        remark: deliveryMethod === "other" ? otherMethod : deliveryMethod,
+      };
+
+      // If there's a photo, upload it first
+      if (photoProof) {
+        const fileExt = photoProof.name.split(".").pop();
+        const fileName = `${id}-${Math.random()}.${fileExt}`;
+        const filePath = `delivery-proofs/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("delivery-proofs")
+          .upload(filePath, photoProof);
+
+        if (uploadError) throw uploadError;
+
+        // Add the photo URL to the update data
+        updateData.photo_proof = filePath;
+      }
+
+      // Update the order
+      const { error: updateError } = await supabase
+        .from("orders")
+        .update(updateData)
+        .eq("id", id);
+
+      if (updateError) throw updateError;
+
+      // Update local state
+      setCurrentStatus("delivered");
+      setShowDeliveryModal(false);
+
+      // Reset form
+      setDeliveryMethod("");
+      setOtherMethod("");
+      setPhotoProof(null);
+
+      // Refresh order data
+      fetchOrder();
+
+      // Show success message
+      alert("Delivery completed successfully!");
+    } catch (error) {
+      console.error("Error completing delivery:", error);
+      alert("Failed to complete delivery. Please try again.");
+    }
+  };
+
+  const handleCancellation = async () => {
+    try {
+      if (!cancelReason) {
+        alert("Please select a cancellation reason");
+        return;
+      }
+
+      const { error } = await supabase
+        .from("orders")
+        .update({
+          status: "cancelled",
+          remark: cancelReason,
+        })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      setCurrentStatus("cancelled");
+      setShowCancelModal(false);
+      setCancelReason("");
+
+      // Refresh order data
+      fetchOrder();
+
+      alert("Order cancelled successfully");
+    } catch (error) {
+      console.error("Error cancelling order:", error);
+      alert("Failed to cancel order. Please try again.");
+    }
+  };
+
+  if (loading) {
+    return <div className="p-4 text-center">Loading order details...</div>;
+  }
+
+  if (!order) {
+    return (
+      <div className="p-4 text-center">
+        <h1 className="text-xl font-bold mb-4">Order not found</h1>
+        <button
+          onClick={() => router.back()}
+          className="text-blue-500 hover:text-blue-600"
+        >
+          Go Back
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4">
@@ -238,41 +376,19 @@ export default function OrderDetails({ params }) {
             />
           </svg>
         </button>
-        <h1 className="text-2xl font-bold">Order #{id}</h1>
+        <h1 className="text-2xl font-bold">Order #{order.id}</h1>
       </div>
 
       {/* Timer and Status Bar */}
       <div className="bg-blue-50 p-4 rounded-lg mb-4">
         <div className="flex justify-between items-center">
           <div>
-            <p className="text-sm text-blue-600">Time Remaining</p>
-            <p className="text-2xl font-bold text-blue-800">15:00</p>
+            <p className="text-sm text-blue-600">Order Time</p>
+            <p className="text-2xl font-bold text-blue-800">
+              {new Date(order.created_at).toLocaleTimeString()}
+            </p>
           </div>
           <div className="text-right">
-            <span className="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded">
-              In Progress
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <StatusSelector />
-
-      {/* Order Status */}
-      <div className="bg-white rounded-lg shadow p-4 mb-4">
-        <div className="flex justify-between items-center mb-4">
-          <div>
-            <span className="text-lg font-bold">₹950.00</span>
-            <p className="text-sm text-gray-500">Cash on Delivery</p>
-          </div>
-          <div className="text-right">
-            <p className="text-sm text-gray-600">Order Time</p>
-            <p className="font-medium">2:30 PM</p>
-          </div>
-        </div>
-        <div className="space-y-2">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-medium text-gray-600">Status</span>
             <span
               className={`px-3 py-1 rounded-full text-sm font-medium ${
                 getStatusStyle(currentStatus).bg
@@ -281,138 +397,24 @@ export default function OrderDetails({ params }) {
               {getStatusStyle(currentStatus).label}
             </span>
           </div>
-
-          <div className="space-y-3 mt-4">
-            {ORDER_STATUSES.map((status, index) => {
-              const isActive = currentStatus === status.id;
-              const isPast =
-                ORDER_STATUSES.findIndex((s) => s.id === currentStatus) >
-                ORDER_STATUSES.findIndex((s) => s.id === status.id);
-
-              return (
-                <div
-                  key={status.id}
-                  className="flex items-center cursor-pointer"
-                  onClick={() => handleStatusChange(status.id)}
-                >
-                  <div
-                    className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                      isActive
-                        ? status.bgColor
-                        : isPast
-                        ? "bg-gray-100"
-                        : "bg-gray-50"
-                    }`}
-                  >
-                    <svg
-                      className={`w-5 h-5 ${
-                        isActive
-                          ? status.color
-                          : isPast
-                          ? "text-gray-500"
-                          : "text-gray-400"
-                      }`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      {status.icon}
-                    </svg>
-                  </div>
-                  <div className="ml-4 flex-1">
-                    <p
-                      className={`text-sm font-medium ${
-                        isActive
-                          ? status.color
-                          : isPast
-                          ? "text-gray-700"
-                          : "text-gray-500"
-                      }`}
-                    >
-                      {status.label}
-                    </p>
-                    {isActive && (
-                      <p className="text-xs text-gray-500">Current Status</p>
-                    )}
-                  </div>
-                  {isActive && (
-                    <div className={`flex-shrink-0 ${status.color}`}>
-                      <svg
-                        className="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="flex items-center text-sm mt-4">
-            <svg
-              className="w-4 h-4 mr-2 text-gray-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <span>Expected delivery by 3:00 PM</span>
-          </div>
-          <div className="flex items-center text-sm">
-            <svg
-              className="w-4 h-4 mr-2 text-gray-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-              />
-            </svg>
-            <span>3.5 km total distance</span>
-          </div>
         </div>
       </div>
 
-      {/* Order Items */}
+      <StatusSelector
+        currentStatus={currentStatus}
+        handleStatusChange={handleStatusChange}
+      />
+
+      {/* Order Details */}
       <div className="bg-white rounded-lg shadow p-4 mb-4">
-        <h2 className="font-semibold mb-3">Order Items</h2>
-        <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="font-medium">2x Large Pizza</p>
-              <p className="text-sm text-gray-500">Extra cheese, Mushrooms</p>
-            </div>
-            <span className="text-gray-600">₹600</span>
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <span className="text-lg font-bold">₹{order.total_amount}</span>
+            <p className="text-sm text-gray-500">{order.payment_method}</p>
           </div>
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="font-medium">1x Garlic Bread</p>
-              <p className="text-sm text-gray-500">With cheese dip</p>
-            </div>
-            <span className="text-gray-600">₹150</span>
-          </div>
-          <div className="border-t pt-2 flex justify-between font-medium">
-            <span>Total Items: 3</span>
-            <span>₹750</span>
+          <div className="text-right">
+            <p className="text-sm text-gray-600">Payment Status</p>
+            <p className="font-medium capitalize">{order.payment_status}</p>
           </div>
         </div>
       </div>
@@ -443,15 +445,15 @@ export default function OrderDetails({ params }) {
             <div className="flex-1">
               <div className="flex justify-between">
                 <div>
-                  <p className="font-medium">Pizza Hub</p>
-                  <p className="text-sm text-gray-600">
-                    123 Restaurant Street, Mumbai
+                  <p className="font-medium">
+                    {order.store?.name || "Pickup Location"}
                   </p>
+                  <p className="text-sm text-gray-600">{order.start}</p>
                 </div>
                 <button className="text-blue-600 text-sm">Navigate</button>
               </div>
               <p className="text-sm text-gray-500 mt-1">
-                Contact: +91 98765 43210
+                Contact: {order.store?.phone || "N/A"}
               </p>
             </div>
           </div>
@@ -481,15 +483,15 @@ export default function OrderDetails({ params }) {
             <div className="flex-1">
               <div className="flex justify-between">
                 <div>
-                  <p className="font-medium">Customer Location</p>
-                  <p className="text-sm text-gray-600">
-                    456 Customer Avenue, Mumbai
+                  <p className="font-medium">
+                    {order.customer?.full_name || "Customer"}
                   </p>
+                  <p className="text-sm text-gray-600">{order.destination}</p>
                 </div>
                 <button className="text-blue-600 text-sm">Navigate</button>
               </div>
               <p className="text-sm text-gray-500 mt-1">
-                Contact: +91 98765 43211
+                Contact: {order.customer?.phone || "N/A"}
               </p>
             </div>
           </div>
@@ -497,14 +499,14 @@ export default function OrderDetails({ params }) {
       </div>
 
       {/* Customer Notes */}
-      <div className="bg-white rounded-lg shadow p-4 mb-4">
-        <h2 className="font-semibold mb-2">Delivery Instructions</h2>
-        <div className="bg-yellow-50 p-3 rounded-lg">
-          <p className="text-sm text-yellow-800">
-            Please deliver to the security gate. Call when reached.
-          </p>
+      {order.delivery_notes && (
+        <div className="bg-white rounded-lg shadow p-4 mb-4">
+          <h2 className="font-semibold mb-2">Delivery Instructions</h2>
+          <div className="bg-yellow-50 p-3 rounded-lg">
+            <p className="text-sm text-yellow-800">{order.delivery_notes}</p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Action Buttons */}
       <div className="space-y-3">

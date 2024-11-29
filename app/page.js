@@ -1,6 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import "./utils/date";
 
 export default function Home() {
   const [isDriverModeOn, setIsDriverModeOn] = useState(false);
@@ -14,6 +16,9 @@ export default function Home() {
     vehicle: false,
     phone: false,
   });
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const supabase = createClientComponentClient();
 
   const handleToggle = (newState) => {
     setPendingState(newState);
@@ -52,6 +57,57 @@ export default function Home() {
     { key: "week", label: "This Week" },
     { key: "month", label: "This Month" },
   ];
+
+  useEffect(() => {
+    fetchRecentActivity();
+  }, []);
+
+  const fetchRecentActivity = async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      // First get the user's record from the users table
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("auth_id", user.id)
+        .single();
+
+      if (userError) throw userError;
+      if (!userData) {
+        console.error("No user record found");
+        return;
+      }
+
+      // Fetch recent orders
+      const { data, error } = await supabase
+        .from("orders")
+        .select(
+          `
+          id,
+          created_at,
+          status,
+          total_amount,
+          remark
+        `
+        )
+        .eq("driverid", userData.id)
+        .order("created_at", { ascending: false })
+        .limit(3);
+
+      if (error) throw error;
+
+      setRecentActivity(data);
+    } catch (error) {
+      console.error("Error fetching recent activity:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="p-4">
@@ -307,67 +363,74 @@ export default function Home() {
           </Link>
         </div>
         <div className="divide-y">
-          {[
-            {
-              type: "completed",
-              time: "15 mins ago",
-              amount: "₹150",
-              status: "Delivered",
-            },
-            {
-              type: "cancelled",
-              time: "1 hour ago",
-              amount: "₹0",
-              status: "Cancelled by customer",
-            },
-            {
-              type: "completed",
-              time: "2 hours ago",
-              amount: "₹200",
-              status: "Delivered",
-            },
-          ].map((activity, index) => (
-            <div key={index} className="p-4">
-              <div className="flex justify-between items-start">
-                <div className="flex items-start">
-                  <div
-                    className={`w-2 h-2 rounded-full mt-2 mr-3 ${
-                      activity.type === "completed"
-                        ? "bg-green-500"
-                        : "bg-red-500"
-                    }`}
-                  ></div>
-                  <div>
-                    <p className="font-medium">Order #{1234 + index}</p>
-                    <p className="text-sm text-gray-500">{activity.time}</p>
+          {loading ? (
+            <div className="p-4 text-center text-gray-500">Loading...</div>
+          ) : recentActivity.length === 0 ? (
+            <div className="p-4 text-center text-gray-500">
+              No recent activity
+            </div>
+          ) : (
+            recentActivity.map((activity) => (
+              <div key={activity.id} className="p-4">
+                <div className="flex justify-between items-start">
+                  <div className="flex items-start">
+                    <div
+                      className={`w-2 h-2 rounded-full mt-2 mr-3 ${
+                        activity.status === "completed"
+                          ? "bg-green-500"
+                          : activity.status === "cancelled"
+                          ? "bg-red-500"
+                          : "bg-yellow-500"
+                      }`}
+                    ></div>
+                    <div>
+                      <p className="font-medium">Order #{activity.id}</p>
+                      <p className="text-sm text-gray-500">
+                        {new Date(activity.created_at).toRelative()}
+                      </p>
+                      <span
+                        className={`text-xs ${
+                          activity.status === "completed"
+                            ? "text-green-600"
+                            : activity.status === "cancelled"
+                            ? "text-red-600"
+                            : "text-yellow-600"
+                        }`}
+                      >
+                        {activity.status === "completed"
+                          ? "Delivered"
+                          : activity.status === "cancelled"
+                          ? activity.remark || "Cancelled"
+                          : "In Progress"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right">
                     <span
-                      className={`text-xs ${
-                        activity.type === "completed"
+                      className={`font-medium ${
+                        activity.status === "completed"
                           ? "text-green-600"
-                          : "text-red-600"
+                          : activity.status === "cancelled"
+                          ? "text-red-600"
+                          : "text-yellow-600"
                       }`}
                     >
-                      {activity.status}
+                      {activity.status === "completed"
+                        ? `₹${activity.total_amount}`
+                        : "₹0"}
                     </span>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {activity.status === "completed"
+                        ? "Earnings"
+                        : activity.status === "cancelled"
+                        ? "Cancelled"
+                        : "Pending"}
+                    </p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <span
-                    className={`font-medium ${
-                      activity.type === "completed"
-                        ? "text-green-600"
-                        : "text-red-600"
-                    }`}
-                  >
-                    {activity.amount}
-                  </span>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {activity.type === "completed" ? "Earnings" : "Cancelled"}
-                  </p>
-                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
