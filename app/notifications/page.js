@@ -2,11 +2,13 @@
 import { useState, useEffect } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { formatInTimeZone } from "date-fns-tz";
+import { useRouter } from "next/navigation";
 
 export default function Notifications() {
   const [activeFilter, setActiveFilter] = useState("all");
   const [notifications, setNotifications] = useState([]);
   const supabase = createClientComponentClient();
+  const router = useRouter();
 
   // Fetch notifications
   useEffect(() => {
@@ -175,9 +177,9 @@ export default function Notifications() {
         {[
           { key: "all", label: "All" },
           { key: "today", label: "Today" },
-          { key: "orders", label: "Orders" },
-          { key: "earnings", label: "Earnings" },
-          { key: "penalties", label: "Penalties" },
+          { key: "order", label: "Orders" },
+          { key: "payment", label: "Earnings" },
+          { key: "penalty", label: "Penalties" },
           { key: "system", label: "System" },
         ].map((filter) => (
           <button
@@ -197,7 +199,20 @@ export default function Notifications() {
       {/* Notifications List */}
       <div className="space-y-4">
         {getFilteredNotifications().map((notification) => (
-          <div key={notification.id} className="bg-white rounded-lg shadow p-4">
+          <div
+            key={notification.id}
+            className={`bg-white rounded-lg shadow p-4 ${
+              notification.type === "order"
+                ? "cursor-pointer hover:bg-gray-50"
+                : ""
+            }`}
+            onClick={() => {
+              // Only navigate if it's an order notification and has an order_id
+              if (notification.type === "order" && notification.order_id) {
+                router.push(`/orders/${notification.order_id}`);
+              }
+            }}
+          >
             <div className="flex items-start">
               <div
                 className={`${getBackgroundColor(
