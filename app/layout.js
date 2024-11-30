@@ -1,38 +1,37 @@
-"use client";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import BottomNavigation from "@/components/BottomNavigation";
 import PWAPrompt from "@/components/PWAPrompt";
-import OneSignal from "react-onesignal";
-import { useEffect } from "react";
+import { Viewport } from "next";
 
 const inter = Inter({ subsets: ["latin"] });
 
+export const viewport = {
+  themeColor: "#000000", // Adjust color as needed
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+  },
+};
+
+export const metadata = {
+  title: "Driver App",
+  description: "Delivery Driver Application",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Driver App",
+  },
+  icons: {
+    icon: "/icons/icon-192x192.png",
+    shortcut: "/icons/icon-192x192.png",
+    apple: "/icons/icon-192x192.png",
+  },
+};
+
 export default function RootLayout({ children }) {
-  useEffect(() => {
-    const initOneSignal = async () => {
-      try {
-        await OneSignal.init({
-          appId: "a9308328-24d7-479b-b830-65530fa31331", // Replace with your OneSignal App ID
-          allowLocalhostAsSecureOrigin: true, // Remove this in production
-          notifyButton: {
-            enable: true,
-          },
-          serviceWorker: {
-            path: "/onesignal/", // This will look for OneSignal's service worker in /public/onesignal/
-          },
-        });
-
-        // Prompt user for notification permissions
-        OneSignal.showSlidedownPrompt();
-      } catch (error) {
-        console.error("OneSignal initialization error:", error);
-      }
-    };
-
-    initOneSignal();
-  }, []);
-
   return (
     <html lang="en">
       <head>
@@ -42,7 +41,6 @@ export default function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Driver App" />
         <meta name="theme-color" content="#3b82f6" />
-        <meta name="onesignal" content="wordpress-plugin" />
       </head>
       <body className={inter.className}>
         <main className="pb-16">{children}</main>
