@@ -8,8 +8,15 @@ export async function middleware(req) {
     data: { session },
   } = await supabase.auth.getSession();
 
-  // Protect the profile route
-  if (req.nextUrl.pathname.startsWith("/profile") && !session) {
+  // Protect multiple routes including homepage
+  if (
+    (req.nextUrl.pathname === "/" ||
+      req.nextUrl.pathname.startsWith("/profile") ||
+      req.nextUrl.pathname.startsWith("/orders") ||
+      req.nextUrl.pathname.startsWith("/earnings") ||
+      req.nextUrl.pathname.startsWith("/notifications")) &&
+    !session
+  ) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
@@ -17,5 +24,11 @@ export async function middleware(req) {
 }
 
 export const config = {
-  matcher: ["/profile/:path*"],
+  matcher: [
+    "/",
+    "/profile/:path*",
+    "/orders/:path*",
+    "/earnings/:path*",
+    "/notifications/:path*",
+  ],
 };
