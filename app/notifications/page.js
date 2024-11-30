@@ -7,50 +7,64 @@ import { useRouter } from "next/navigation";
 export default function Notifications() {
   const [activeFilter, setActiveFilter] = useState("all");
   const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
   const supabase = createClientComponentClient();
   const router = useRouter();
 
   // Fetch notifications
   useEffect(() => {
     const fetchNotifications = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      try {
+        setLoading(true);
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
 
-      if (!user) return;
+        if (!user) {
+          setLoading(false);
+          return;
+        }
 
-      // First get the user's ID from users table using auth_id
-      const { data: userData, error: userError } = await supabase
-        .from("users")
-        .select("id")
-        .eq("auth_id", user.id)
-        .single();
+        // First get the user's ID from users table using auth_id
+        const { data: userData, error: userError } = await supabase
+          .from("users")
+          .select("id")
+          .eq("auth_id", user.id)
+          .single();
 
-      if (userError) {
-        console.error("Error fetching user:", userError);
-        return;
+        if (userError) {
+          console.error("Error fetching user:", userError);
+          setLoading(false);
+          return;
+        }
+
+        if (!userData) {
+          console.error("User not found");
+          setLoading(false);
+          return;
+        }
+
+        // Then fetch notifications using the user's ID
+        const { data: notificationsData, error: notificationsError } =
+          await supabase
+            .from("notifications")
+            .select("*")
+            .eq("recipient_id", userData.id)
+            .eq("recipient_type", "driver")
+            .order("created_at", { ascending: false });
+
+        if (notificationsError) {
+          console.error("Error fetching notifications:", notificationsError);
+          setLoading(false);
+          return;
+        }
+
+        setNotifications(notificationsData || []);
+      } catch (error) {
+        console.error("Unexpected error:", error);
+      } finally {
+        setLoading(false);
       }
-
-      if (!userData) {
-        console.error("User not found");
-        return;
-      }
-
-      // Then fetch notifications using the user's ID
-      const { data: notificationsData, error: notificationsError } =
-        await supabase
-          .from("notifications")
-          .select("*")
-          .eq("recipient_id", userData.id)
-          .eq("recipient_type", "driver")
-          .order("created_at", { ascending: false });
-
-      if (notificationsError) {
-        console.error("Error fetching notifications:", notificationsError);
-        return;
-      }
-
-      setNotifications(notificationsData || []);
     };
 
     fetchNotifications();
@@ -168,6 +182,22 @@ export default function Notifications() {
     );
   };
 
+  // Add skeleton loading component
+  const NotificationSkeleton = () => (
+    <div className="bg-white rounded-lg shadow p-4">
+      <div className="flex items-start">
+        <div className="bg-gray-200 p-2 rounded-full mr-3 animate-pulse">
+          <div className="w-6 h-6"></div>
+        </div>
+        <div className="flex-1 space-y-2">
+          <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
+          <div className="h-3 bg-gray-200 rounded animate-pulse w-full"></div>
+          <div className="h-2 bg-gray-200 rounded animate-pulse w-1/4"></div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="p-4">
       <h1 className="text-2xl font-bold mb-4">Notifications</h1>
@@ -198,44 +228,53 @@ export default function Notifications() {
 
       {/* Notifications List */}
       <div className="space-y-4">
-        {getFilteredNotifications().map((notification) => (
-          <div
-            key={notification.id}
-            className={`bg-white rounded-lg shadow p-4 ${
-              notification.type === "order"
-                ? "cursor-pointer hover:bg-gray-50"
-                : ""
-            }`}
-            onClick={() => {
-              // Only navigate if it's an order notification and has an order_id
-              if (notification.type === "order" && notification.order_id) {
-                router.push(`/orders/${notification.order_id}`);
-              }
-            }}
-          >
-            <div className="flex items-start">
+        {loading ? (
+          // Show 5 skeleton loaders while loading
+          [...Array(5)].map((_, index) => <NotificationSkeleton key={index} />)
+        ) : (
+          <>
+            {getFilteredNotifications().map((notification) => (
               <div
-                className={`${getBackgroundColor(
-                  notification.type
-                )} p-2 rounded-full mr-3`}
+                key={notification.id}
+                className={`bg-white rounded-lg shadow p-4 ${
+                  notification.type === "order"
+                    ? "cursor-pointer hover:bg-gray-50"
+                    : ""
+                }`}
+                onClick={() => {
+                  // Only navigate if it's an order notification and has an order_id
+                  if (notification.type === "order" && notification.order_id) {
+                    router.push(`/orders/${notification.order_id}`);
+                  }
+                }}
               >
-                {getNotificationIcon(notification.type)}
+                <div className="flex items-start">
+                  <div
+                    className={`${getBackgroundColor(
+                      notification.type
+                    )} p-2 rounded-full mr-3`}
+                  >
+                    {getNotificationIcon(notification.type)}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-medium">{notification.title}</h3>
+                    <p className="text-gray-600 text-sm">
+                      {notification.message}
+                    </p>
+                    <p className="text-gray-400 text-xs mt-1">
+                      {formatDate(notification.created_at)}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div className="flex-1">
-                <h3 className="font-medium">{notification.title}</h3>
-                <p className="text-gray-600 text-sm">{notification.message}</p>
-                <p className="text-gray-400 text-xs mt-1">
-                  {formatDate(notification.created_at)}
-                </p>
-              </div>
-            </div>
-          </div>
-        ))}
+            ))}
 
-        {getFilteredNotifications().length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            <p>No notifications found</p>
-          </div>
+            {getFilteredNotifications().length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <p>No notifications found</p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
