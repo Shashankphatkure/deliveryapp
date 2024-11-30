@@ -236,6 +236,17 @@ export default function OrderDetails({ params }) {
 
   const handleStatusChange = async (newStatus) => {
     try {
+      // Get current user's data
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const { data: userData } = await supabase
+        .from("users")
+        .select("id")
+        .eq("auth_id", user.id)
+        .single();
+
+      // Update order status
       const { error } = await supabase
         .from("orders")
         .update({ status: newStatus })
@@ -243,12 +254,41 @@ export default function OrderDetails({ params }) {
 
       if (error) throw error;
 
+      // Create notification based on status
+      const notificationData = {
+        recipient_id: order.customer?.id,
+        recipient_type: "customer",
+        type: "order",
+        title: `Order #${id} ${newStatus}`,
+        message: getNotificationMessage(newStatus, order),
+        created_at: new Date().toISOString(),
+        order_id: id,
+      };
+
+      const { error: notificationError } = await supabase
+        .from("notifications")
+        .insert(notificationData);
+
+      if (notificationError) throw notificationError;
+
       setCurrentStatus(newStatus);
-      // Refresh order data
       fetchOrder();
     } catch (error) {
       console.error("Error updating status:", error);
     }
+  };
+
+  const getNotificationMessage = (status, order) => {
+    const messages = {
+      accepted: `Your order has been accepted by ${order.driver?.full_name}`,
+      picked_up: `Your order has been picked up from ${order.store?.name}`,
+      on_way: `Your order is on the way to your location`,
+      delivered: `Your order has been delivered successfully`,
+      cancelled: `Your order has been cancelled`,
+    };
+    return (
+      messages[status] || `Your order status has been updated to ${status}`
+    );
   };
 
   const handleDeliverySubmit = async () => {
@@ -303,6 +343,25 @@ export default function OrderDetails({ params }) {
 
       // Show success message
       alert("Delivery completed successfully!");
+
+      // Add notification for delivery completion
+      const notificationData = {
+        recipient_id: order.customer?.id,
+        recipient_type: "customer",
+        type: "order",
+        title: `Order #${id} Delivered`,
+        message: `Your order has been delivered successfully. ${
+          deliveryMethod === "other" ? otherMethod : deliveryMethod
+        }`,
+        created_at: new Date().toISOString(),
+        order_id: id,
+      };
+
+      const { error: notificationError } = await supabase
+        .from("notifications")
+        .insert(notificationData);
+
+      if (notificationError) throw notificationError;
     } catch (error) {
       console.error("Error completing delivery:", error);
       alert("Failed to complete delivery. Please try again.");
@@ -334,6 +393,23 @@ export default function OrderDetails({ params }) {
       fetchOrder();
 
       alert("Order cancelled successfully");
+
+      // Add notification for cancellation
+      const notificationData = {
+        recipient_id: order.customer?.id,
+        recipient_type: "customer",
+        type: "order",
+        title: `Order #${id} Cancelled`,
+        message: `Your order has been cancelled. Reason: ${cancelReason}`,
+        created_at: new Date().toISOString(),
+        order_id: id,
+      };
+
+      const { error: notificationError } = await supabase
+        .from("notifications")
+        .insert(notificationData);
+
+      if (notificationError) throw notificationError;
     } catch (error) {
       console.error("Error cancelling order:", error);
       alert("Failed to cancel order. Please try again.");
