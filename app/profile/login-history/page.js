@@ -21,16 +21,19 @@ export default function LoginHistory() {
 
       // Get time filter condition
       const timeCondition = (() => {
+        if (timeFilter === "all") {
+          return new Date(0); // Returns Jan 1, 1970, effectively getting all records
+        }
         const now = new Date();
         switch (timeFilter) {
           case "today":
-            return now.setDate(now.getDate() - 1);
+            return new Date(now.setDate(now.getDate() - 1));
           case "week":
-            return now.setDate(now.getDate() - 7);
+            return new Date(now.setDate(now.getDate() - 7));
           case "month":
-            return now.setDate(now.getDate() - 30);
+            return new Date(now.setDate(now.getDate() - 30));
           default:
-            return now.setDate(now.getDate() - 90);
+            return new Date(now.setDate(now.getDate() - 90));
         }
       })();
 
@@ -51,9 +54,22 @@ export default function LoginHistory() {
           : null;
         const isActive = !notAfterDate || notAfterDate > now;
 
+        // Determine device type based on user agent
+        const deviceType = (() => {
+          const ua = session.user_agent?.toLowerCase() || "";
+          if (
+            ua.includes("mobile") ||
+            ua.includes("android") ||
+            ua.includes("iphone")
+          ) {
+            return "mobile";
+          }
+          return "desktop";
+        })();
+
         return {
           id: session.id,
-          deviceType: userAgent.device,
+          deviceType,
           deviceModel: userAgent.model || "Unknown Device",
           browser: userAgent.browser || "Unknown Browser",
           os: userAgent.os || "Unknown OS",
@@ -74,15 +90,21 @@ export default function LoginHistory() {
         };
       });
 
+      // Apply device filter
+      const filteredSessions = transformedSessions.filter((session) => {
+        if (deviceFilter === "all") return true;
+        return session.deviceType === deviceFilter;
+      });
+
       // Find current active session (most recent active session)
-      const activeSessions = transformedSessions
+      const activeSessions = filteredSessions
         .filter((session) => session.status === "Active")
         .sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
 
       const currentSession = activeSessions[0];
 
       // All other sessions are previous sessions
-      const previousSessions = transformedSessions
+      const previousSessions = filteredSessions
         .filter((session) => session !== currentSession)
         .sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
 
@@ -300,9 +322,9 @@ export default function LoginHistory() {
               onChange={(e) => setTimeFilter(e.target.value)}
             >
               <option value="all">All Time</option>
-              <option value="today">Today</option>
-              <option value="week">This Week</option>
-              <option value="month">This Month</option>
+              <option value="today">Last 24 Hours</option>
+              <option value="week">Last 7 Days</option>
+              <option value="month">Last 30 Days</option>
             </select>
           </div>
           <div>
