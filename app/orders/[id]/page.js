@@ -114,25 +114,25 @@ const StatusSelector = ({ currentStatus, handleStatusChange }) => {
 
   return (
     <div
-      className="flex overflow-x-auto pb-4 mb-4 hide-scrollbar"
+      className="flex overflow-x-auto pb-4 mb-4 hide-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0"
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseUp}
     >
-      <div className="flex space-x-4">
+      <div className="flex space-x-3 sm:space-x-4 w-full">
         {ORDER_STATUSES.map((status) => (
           <button
             key={status.id}
             onClick={() => handleStatusChange(status.id)}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+            className={`flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 rounded-lg transition-colors whitespace-nowrap text-sm sm:text-base ${
               currentStatus === status.id
                 ? `${status.bgColor} ${status.color}`
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
             <svg
-              className="w-5 h-5"
+              className="w-4 h-4 sm:w-5 sm:h-5"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -359,11 +359,12 @@ export default function OrderDetails({ params }) {
   }
 
   return (
-    <div className="p-4">
-      <div className="flex items-center mb-4">
+    <div className="p-4 max-w-2xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center mb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
         <button onClick={() => router.back()} className="mr-2">
           <svg
-            className="w-6 h-6 text-gray-600"
+            className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -376,15 +377,15 @@ export default function OrderDetails({ params }) {
             />
           </svg>
         </button>
-        <h1 className="text-2xl font-bold">Order #{order.id}</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">Order #{order.id}</h1>
       </div>
 
       {/* Timer and Status Bar */}
-      <div className="bg-blue-50 p-4 rounded-lg mb-4">
+      <div className="bg-blue-50 p-3 sm:p-4 rounded-lg mb-4">
         <div className="flex justify-between items-center">
           <div>
-            <p className="text-sm text-blue-600">Order Time</p>
-            <p className="text-2xl font-bold text-blue-800">
+            <p className="text-xs sm:text-sm text-blue-600">Order Time</p>
+            <p className="text-lg sm:text-2xl font-bold text-blue-800">
               {new Date(order.created_at).toLocaleTimeString()}
             </p>
           </div>
@@ -406,11 +407,15 @@ export default function OrderDetails({ params }) {
       />
 
       {/* Order Details */}
-      <div className="bg-white rounded-lg shadow p-4 mb-4">
-        <div className="flex justify-between items-center mb-4">
+      <div className="bg-white rounded-lg shadow p-3 sm:p-4 mb-4">
+        <div className="flex justify-between items-center">
           <div>
-            <span className="text-lg font-bold">₹{order.total_amount}</span>
-            <p className="text-sm text-gray-500">{order.payment_method}</p>
+            <span className="text-base sm:text-lg font-bold">
+              ₹{order.total_amount}
+            </span>
+            <p className="text-xs sm:text-sm text-gray-500">
+              {order.payment_method}
+            </p>
           </div>
           <div className="text-right">
             <p className="text-sm text-gray-600">Payment Status</p>
@@ -420,7 +425,7 @@ export default function OrderDetails({ params }) {
       </div>
 
       {/* Delivery Locations */}
-      <div className="bg-white rounded-lg shadow p-4 mb-4">
+      <div className="bg-white rounded-lg shadow p-3 sm:p-4 mb-4">
         <h2 className="font-semibold mb-4">Delivery Route</h2>
         <div className="space-y-4">
           {/* Pickup Location */}
@@ -500,7 +505,7 @@ export default function OrderDetails({ params }) {
 
       {/* Customer Notes */}
       {order.delivery_notes && (
-        <div className="bg-white rounded-lg shadow p-4 mb-4">
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4 mb-4">
           <h2 className="font-semibold mb-2">Delivery Instructions</h2>
           <div className="bg-yellow-50 p-3 rounded-lg">
             <p className="text-sm text-yellow-800">{order.delivery_notes}</p>
@@ -509,10 +514,10 @@ export default function OrderDetails({ params }) {
       )}
 
       {/* Action Buttons */}
-      <div className="space-y-3">
+      <div className="space-y-2 sm:space-y-3 fixed bottom-0 left-0 right-0 p-4 bg-white border-t sm:relative sm:border-0 sm:bg-transparent">
         <button
           onClick={() => setShowDeliveryModal(true)}
-          className="w-full bg-green-500 text-white py-3 rounded-lg font-medium flex items-center justify-center"
+          className="w-full bg-green-500 text-white py-2.5 sm:py-3 rounded-lg font-medium text-sm sm:text-base flex items-center justify-center"
         >
           <svg
             className="w-5 h-5 mr-2"
@@ -531,7 +536,7 @@ export default function OrderDetails({ params }) {
         </button>
         <button
           onClick={() => setShowCancelModal(true)}
-          className="w-full bg-red-500 text-white py-3 rounded-lg font-medium flex items-center justify-center"
+          className="w-full bg-red-500 text-white py-2.5 sm:py-3 rounded-lg font-medium text-sm sm:text-base flex items-center justify-center"
         >
           <svg
             className="w-5 h-5 mr-2"
@@ -550,7 +555,7 @@ export default function OrderDetails({ params }) {
         </button>
         <button
           onClick={() => setShowSupportModal(true)}
-          className="w-full border border-gray-300 text-gray-700 py-3 rounded-lg font-medium flex items-center justify-center"
+          className="w-full border border-gray-300 text-gray-700 py-2.5 sm:py-3 rounded-lg font-medium text-sm sm:text-base flex items-center justify-center"
         >
           <svg
             className="w-5 h-5 mr-2"
@@ -569,10 +574,13 @@ export default function OrderDetails({ params }) {
         </button>
       </div>
 
+      {/* Add bottom padding to account for fixed buttons on mobile */}
+      <div className="h-48 sm:h-0"></div>
+
       {/* Delivery Completion Modal */}
       {showDeliveryModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50">
+          <div className="bg-white rounded-t-lg sm:rounded-lg p-4 sm:p-6 w-full max-h-[90vh] overflow-y-auto sm:max-w-md mx-0 sm:mx-4">
             <h3 className="text-lg font-semibold mb-4">Complete Delivery</h3>
 
             {/* Delivery Method Selection */}
