@@ -20,6 +20,21 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState("Driver");
   const supabase = createClientComponentClient();
+  const [statistics, setStatistics] = useState({
+    earnings: 0,
+    earningsChange: 0,
+    totalOrders: 0,
+    completedOrders: 0,
+    cancelledOrders: 0,
+  });
+  const [progress, setProgress] = useState({
+    ordersTarget: 15,
+    ordersCompleted: 0,
+    earningsTarget: 2000,
+    earningsCompleted: 0,
+    activeTimeTarget: 8,
+    activeTimeCompleted: 0,
+  });
 
   const handleToggle = (newState) => {
     setPendingState(newState);
@@ -59,9 +74,148 @@ export default function Home() {
     { key: "month", label: "This Month" },
   ];
 
+  const getDateRange = (timeframe) => {
+    const now = new Date();
+    const start = new Date();
+
+    switch (timeframe) {
+      case "today":
+        start.setHours(0, 0, 0, 0);
+        break;
+      case "week":
+        start.setDate(now.getDate() - 7);
+        break;
+      case "month":
+        start.setMonth(now.getMonth() - 1);
+        break;
+    }
+
+    return { start, end: now };
+  };
+
+  const fetchStatistics = async (timeframe) => {
+    try {
+      const { start, end } = getDateRange(timeframe);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      const { data: userData } = await supabase
+        .from("users")
+        .select("id")
+        .eq("auth_id", user.id)
+        .single();
+
+      if (!userData) return;
+
+      // Fetch current period orders
+      const { data: currentOrders } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("driverid", userData.id)
+        .gte("created_at", start.toISOString())
+        .lte("created_at", end.toISOString());
+
+      // Calculate statistics
+      const completed = currentOrders.filter(
+        (order) => order.status === "completed"
+      );
+      const cancelled = currentOrders.filter(
+        (order) => order.status === "cancelled"
+      );
+      const totalEarnings = completed.reduce(
+        (sum, order) => sum + (order.total_amount || 0),
+        0
+      );
+
+      // For earnings change, fetch previous period
+      const previousStart = new Date(start);
+      const previousEnd = new Date(start);
+      if (timeframe === "today") {
+        previousStart.setDate(previousStart.getDate() - 1);
+        previousEnd.setDate(previousEnd.getDate() - 1);
+      }
+
+      const { data: previousOrders } = await supabase
+        .from("orders")
+        .select("total_amount")
+        .eq("driverid", userData.id)
+        .eq("status", "completed")
+        .gte("created_at", previousStart.toISOString())
+        .lte("created_at", previousEnd.toISOString());
+
+      const previousEarnings = previousOrders.reduce(
+        (sum, order) => sum + (order.total_amount || 0),
+        0
+      );
+
+      setStatistics({
+        earnings: totalEarnings,
+        earningsChange: totalEarnings - previousEarnings,
+        totalOrders: currentOrders.length,
+        completedOrders: completed.length,
+        cancelledOrders: cancelled.length,
+      });
+    } catch (error) {
+      console.error("Error fetching statistics:", error);
+    }
+  };
+
+  const fetchTodayProgress = async () => {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: userData } = await supabase
+        .from("users")
+        .select("id")
+        .eq("auth_id", user.id)
+        .single();
+
+      if (!userData) return;
+
+      // Fetch today's completed orders and earnings
+      const { data: todayOrders } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("driverid", userData.id)
+        .eq("status", "completed")
+        .gte("created_at", today.toISOString());
+
+      const completedOrders = todayOrders.length;
+      const totalEarnings = todayOrders.reduce(
+        (sum, order) => sum + (order.total_amount || 0),
+        0
+      );
+
+      // Calculate active time (this is a placeholder - you'll need to implement actual time tracking)
+      const activeTime = 6.5; // This should come from your time tracking system
+
+      setProgress({
+        ordersTarget: 15,
+        ordersCompleted: completedOrders,
+        earningsTarget: 2000,
+        earningsCompleted: totalEarnings,
+        activeTimeTarget: 8,
+        activeTimeCompleted: activeTime,
+      });
+    } catch (error) {
+      console.error("Error fetching today's progress:", error);
+    }
+  };
+
   useEffect(() => {
     fetchRecentActivity();
-  }, []);
+    fetchStatistics(selectedTimeframe);
+    fetchTodayProgress();
+  }, [selectedTimeframe]);
 
   const fetchRecentActivity = async () => {
     try {
@@ -183,20 +337,29 @@ export default function Home() {
       <div className="grid grid-cols-2 gap-4 mb-6">
         <Link href="/earnings" className="bg-white p-4 rounded-lg shadow">
           <h3 className="text-gray-600">Earnings</h3>
-          <p className="text-2xl font-bold">₹950.00</p>
+          <p className="text-2xl font-bold">
+            ₹{statistics.earnings.toFixed(2)}
+          </p>
           <div className="flex items-center mt-1">
             <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-              +₹150 from yesterday
+              {statistics.earningsChange > 0
+                ? `+₹${statistics.earningsChange.toFixed(2)}`
+                : `₹${statistics.earningsChange.toFixed(2)}`}{" "}
+              from yesterday
             </span>
           </div>
         </Link>
         <Link href="/orders" className="bg-white p-4 rounded-lg shadow">
           <h3 className="text-gray-600">Orders</h3>
-          <p className="text-2xl font-bold">8</p>
+          <p className="text-2xl font-bold">{statistics.totalOrders}</p>
           <div className="flex items-center text-sm text-gray-500">
-            <span className="text-green-600">6 completed</span>
+            <span className="text-green-600">
+              {statistics.completedOrders} completed
+            </span>
             <span className="mx-1">•</span>
-            <span className="text-red-600">2 cancelled</span>
+            <span className="text-red-600">
+              {statistics.cancelledOrders} cancelled
+            </span>
           </div>
         </Link>
       </div>
@@ -215,14 +378,28 @@ export default function Home() {
             <div className="flex justify-between text-sm mb-1">
               <span className="text-gray-600">Orders Target</span>
               <div className="flex items-center">
-                <span className="font-medium">8/15 orders</span>
-                <span className="text-xs text-green-600 ml-2">(53%)</span>
+                <span className="font-medium">
+                  {progress.ordersCompleted}/{progress.ordersTarget} orders
+                </span>
+                <span className="text-xs text-green-600 ml-2">
+                  (
+                  {(
+                    (progress.ordersCompleted / progress.ordersTarget) *
+                    100
+                  ).toFixed(0)}
+                  %)
+                </span>
               </div>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div
                 className="bg-blue-500 rounded-full h-2 transition-all duration-500"
-                style={{ width: "53%" }}
+                style={{
+                  width: `${Math.min(
+                    (progress.ordersCompleted / progress.ordersTarget) * 100,
+                    100
+                  )}%`,
+                }}
               ></div>
             </div>
           </div>
@@ -232,14 +409,30 @@ export default function Home() {
             <div className="flex justify-between text-sm mb-1">
               <span className="text-gray-600">Earnings Target</span>
               <div className="flex items-center">
-                <span className="font-medium">₹950/₹2000</span>
-                <span className="text-xs text-yellow-600 ml-2">(47.5%)</span>
+                <span className="font-medium">
+                  ₹{progress.earningsCompleted.toFixed(0)}/₹
+                  {progress.earningsTarget}
+                </span>
+                <span className="text-xs text-yellow-600 ml-2">
+                  (
+                  {(
+                    (progress.earningsCompleted / progress.earningsTarget) *
+                    100
+                  ).toFixed(1)}
+                  %)
+                </span>
               </div>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div
                 className="bg-green-500 rounded-full h-2 transition-all duration-500"
-                style={{ width: "47.5%" }}
+                style={{
+                  width: `${Math.min(
+                    (progress.earningsCompleted / progress.earningsTarget) *
+                      100,
+                    100
+                  )}%`,
+                }}
               ></div>
             </div>
           </div>
@@ -249,14 +442,30 @@ export default function Home() {
             <div className="flex justify-between text-sm mb-1">
               <span className="text-gray-600">Active Time</span>
               <div className="flex items-center">
-                <span className="font-medium">6.5/8 hours</span>
-                <span className="text-xs text-green-600 ml-2">(81%)</span>
+                <span className="font-medium">
+                  {progress.activeTimeCompleted}/{progress.activeTimeTarget}{" "}
+                  hours
+                </span>
+                <span className="text-xs text-green-600 ml-2">
+                  (
+                  {(
+                    (progress.activeTimeCompleted / progress.activeTimeTarget) *
+                    100
+                  ).toFixed(0)}
+                  %)
+                </span>
               </div>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div
                 className="bg-yellow-500 rounded-full h-2 transition-all duration-500"
-                style={{ width: "81%" }}
+                style={{
+                  width: `${Math.min(
+                    (progress.activeTimeCompleted / progress.activeTimeTarget) *
+                      100,
+                    100
+                  )}%`,
+                }}
               ></div>
             </div>
           </div>
