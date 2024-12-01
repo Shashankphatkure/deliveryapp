@@ -118,6 +118,21 @@ const StatusSelector = ({ currentStatus, handleStatusChange }) => {
     e.currentTarget.scrollLeft = scrollLeft - walk;
   };
 
+  const statusOrder = {
+    confirmed: ["accepted"],
+    accepted: ["on_way"],
+    on_way: ["reached"],
+    reached: ["delivered"],
+    delivered: [],
+    cancelled: [],
+  };
+
+  const getEnabledStatuses = (currentStatus) => {
+    return statusOrder[currentStatus] || [];
+  };
+
+  const enabledStatuses = getEnabledStatuses(currentStatus);
+
   return (
     <div
       className="flex overflow-x-auto pb-4 mb-4 hide-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0"
@@ -127,30 +142,53 @@ const StatusSelector = ({ currentStatus, handleStatusChange }) => {
       onMouseLeave={handleMouseUp}
     >
       <div className="flex space-x-3 sm:space-x-4 w-full">
-        {ORDER_STATUSES.map((status) => (
-          <button
-            key={status.id}
-            onClick={() => handleStatusChange(status.id)}
-            className={`flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 rounded-lg transition-colors whitespace-nowrap text-sm sm:text-base ${
-              currentStatus === status.id
-                ? `${status.bgColor} ${status.color}`
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-            }`}
-          >
-            <svg
-              className="w-4 h-4 sm:w-5 sm:h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+        {ORDER_STATUSES.map((status) => {
+          const isEnabled = enabledStatuses.includes(status.id);
+          const isCurrent = currentStatus === status.id;
+          const isPast =
+            getStatusIndex(currentStatus) > getStatusIndex(status.id);
+
+          return (
+            <button
+              key={status.id}
+              onClick={() => isEnabled && handleStatusChange(status.id)}
+              disabled={!isEnabled}
+              className={`flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 rounded-lg transition-colors whitespace-nowrap text-sm sm:text-base ${
+                isCurrent
+                  ? `${status.bgColor} ${status.color}`
+                  : isPast
+                  ? "bg-gray-200 text-gray-600 cursor-not-allowed"
+                  : isEnabled
+                  ? "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  : "bg-gray-100 text-gray-400 cursor-not-allowed opacity-50"
+              }`}
             >
-              {status.icon}
-            </svg>
-            <span>{status.label}</span>
-          </button>
-        ))}
+              <svg
+                className="w-4 h-4 sm:w-5 sm:h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                {status.icon}
+              </svg>
+              <span>{status.label}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
+};
+
+const getStatusIndex = (status) => {
+  const orderSequence = [
+    "confirmed",
+    "accepted",
+    "on_way",
+    "reached",
+    "delivered",
+  ];
+  return orderSequence.indexOf(status);
 };
 
 export default function OrderDetails({ params }) {
