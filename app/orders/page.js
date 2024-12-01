@@ -14,6 +14,14 @@ export default function Orders() {
     cancelled: [],
   });
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    todayCount: 0,
+    percentageChange: 0,
+    totalTime: 0,
+    timeChange: 0,
+    totalRevenue: 0,
+    revenueChange: 0,
+  });
 
   const supabase = createClientComponentClient();
 
@@ -41,6 +49,115 @@ export default function Orders() {
         console.error("No user record found");
         return;
       }
+
+      // Fetch today's orders
+      const today = new Date().toISOString().split("T")[0];
+      const yesterday = new Date(Date.now() - 86400000)
+        .toISOString()
+        .split("T")[0];
+
+      const [ordersToday, ordersYesterday] = await Promise.all([
+        supabase
+          .from("orders")
+          .select("*")
+          .eq("driverid", userData.id)
+          .gte("created_at", `${today}T00:00:00`)
+          .lte("created_at", `${today}T23:59:59`),
+        supabase
+          .from("orders")
+          .select("*")
+          .eq("driverid", userData.id)
+          .gte("created_at", `${yesterday}T00:00:00`)
+          .lte("created_at", `${yesterday}T23:59:59`),
+      ]);
+
+      // Calculate percentage change
+      const todayCount = ordersToday.data?.length || 0;
+      const yesterdayCount = ordersYesterday.data?.length || 0;
+      const percentageChange = yesterdayCount
+        ? (((todayCount - yesterdayCount) / yesterdayCount) * 100).toFixed(0)
+        : 0;
+
+      // Calculate total time from all orders today
+      const { data: timeDataToday } = await supabase
+        .from("orders")
+        .select("time")
+        .eq("driverid", userData.id)
+        .gte("created_at", `${today}T00:00:00`)
+        .lte("created_at", `${today}T23:59:59`);
+
+      // Sum up all times
+      const totalTime =
+        timeDataToday?.reduce((acc, order) => {
+          const minutes = parseInt(order.time?.replace(/[^0-9]/g, "") || 0);
+          return acc + minutes;
+        }, 0) || 0;
+
+      // Get yesterday's total time for comparison
+      const { data: timeDataYesterday } = await supabase
+        .from("orders")
+        .select("time")
+        .eq("driverid", userData.id)
+        .gte("created_at", `${yesterday}T00:00:00`)
+        .lte("created_at", `${yesterday}T23:59:59`);
+
+      const yesterdayTotalTime =
+        timeDataYesterday?.reduce((acc, order) => {
+          const minutes = parseInt(order.time?.replace(/[^0-9]/g, "") || 0);
+          return acc + minutes;
+        }, 0) || 0;
+
+      // Calculate time difference percentage
+      const timeChange = yesterdayTotalTime
+        ? (
+            ((totalTime - yesterdayTotalTime) / yesterdayTotalTime) *
+            100
+          ).toFixed(0)
+        : 0;
+
+      // Calculate total revenue from today's orders
+      const { data: revenueDataToday } = await supabase
+        .from("orders")
+        .select("total_amount")
+        .eq("driverid", userData.id)
+        .gte("created_at", `${today}T00:00:00`)
+        .lte("created_at", `${today}T23:59:59`);
+
+      const totalRevenue =
+        revenueDataToday?.reduce((acc, order) => {
+          return acc + (order.total_amount || 0);
+        }, 0) || 0;
+
+      // Get yesterday's revenue for comparison
+      const { data: revenueDataYesterday } = await supabase
+        .from("orders")
+        .select("total_amount")
+        .eq("driverid", userData.id)
+        .gte("created_at", `${yesterday}T00:00:00`)
+        .lte("created_at", `${yesterday}T23:59:59`);
+
+      const yesterdayRevenue =
+        revenueDataYesterday?.reduce((acc, order) => {
+          return acc + (order.total_amount || 0);
+        }, 0) || 0;
+
+      // Calculate revenue change percentage
+      const revenueChange = yesterdayRevenue
+        ? (
+            ((totalRevenue - yesterdayRevenue) / yesterdayRevenue) *
+            100
+          ).toFixed(0)
+        : 0;
+
+      setStats((prevStats) => ({
+        ...prevStats,
+        todayCount,
+        percentageChange,
+        totalTime,
+        timeChange: Number(timeChange),
+        totalRevenue,
+        revenueChange: Number(revenueChange),
+      }));
 
       // Then fetch orders using the user's ID from the users table
       const { data, error } = await supabase
@@ -130,18 +247,55 @@ export default function Orders() {
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow p-3">
           <p className="text-gray-600 text-sm">Today's Orders</p>
-          <p className="text-xl font-bold">15</p>
-          <p className="text-xs text-green-600">↑ 20% from yesterday</p>
+          <p className="text-xl font-bold">{stats.todayCount}</p>
+          <p
+            className={`text-xs ${
+              Number(stats.percentageChange) >= 0
+                ? "text-green-600"
+                : "text-red-600"
+            }`}
+          >
+            {stats.percentageChange > 0 ? "↑" : "↓"}{" "}
+            {Math.abs(stats.percentageChange)}% from yesterday
+          </p>
         </div>
         <div className="bg-white rounded-lg shadow p-3">
-          <p className="text-gray-600 text-sm">Completion Rate</p>
-          <p className="text-xl font-bold">95%</p>
-          <p className="text-xs text-green-600">↑ 5% this week</p>
+          <p className="text-gray-600 text-sm">Total Time</p>
+          <p className="text-xl font-bold">{stats.totalTime} min</p>
+          <p
+            className={`text-xs ${
+              Math.abs(stats.timeChange) < 5
+                ? "text-yellow-600"
+                : stats.timeChange <= 0
+                ? "text-green-600"
+                : "text-red-600"
+            }`}
+          >
+            {Math.abs(stats.timeChange) < 5
+              ? "↔ Same as usual"
+              : stats.timeChange <= 0
+              ? `↓ ${Math.abs(stats.timeChange)}% less`
+              : `↑ ${stats.timeChange}% more`}
+          </p>
         </div>
         <div className="bg-white rounded-lg shadow p-3">
-          <p className="text-gray-600 text-sm">Avg. Time</p>
-          <p className="text-xl font-bold">28 min</p>
-          <p className="text-xs text-yellow-600">↔ Same as usual</p>
+          <p className="text-gray-600 text-sm">Today's Revenue</p>
+          <p className="text-xl font-bold">₹{stats.totalRevenue.toFixed(2)}</p>
+          <p
+            className={`text-xs ${
+              Math.abs(stats.revenueChange) < 5
+                ? "text-yellow-600"
+                : stats.revenueChange >= 0
+                ? "text-green-600"
+                : "text-red-600"
+            }`}
+          >
+            {Math.abs(stats.revenueChange) < 5
+              ? "↔ Same as usual"
+              : stats.revenueChange > 0
+              ? `↑ ${Math.abs(stats.revenueChange)}% up`
+              : `↓ ${Math.abs(stats.revenueChange)}% down`}
+          </p>
         </div>
       </div>
 
