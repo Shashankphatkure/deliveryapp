@@ -127,7 +127,14 @@ export default function Penalties() {
           <div>
             <p className="text-gray-600 text-sm">Total Penalties</p>
             <p className="text-2xl font-bold">
-              ₹{penalties.active.length + penalties.resolved.length}.00
+              ₹
+              {[...penalties.active, ...penalties.resolved]
+                .reduce(
+                  (sum, penalty) =>
+                    sum + parseFloat(penalty.amount.replace("₹", "")),
+                  0
+                )
+                .toFixed(2)}
             </p>
           </div>
           <div>
