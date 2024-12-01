@@ -34,20 +34,6 @@ const ORDER_STATUSES = [
     bgColor: "bg-blue-100",
   },
   {
-    id: "picked_up",
-    label: "Picked Up",
-    icon: (
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-        d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
-      />
-    ),
-    color: "text-yellow-600",
-    bgColor: "bg-yellow-100",
-  },
-  {
     id: "on_way",
     label: "On The Way",
     icon: (
@@ -62,14 +48,14 @@ const ORDER_STATUSES = [
     bgColor: "bg-purple-100",
   },
   {
-    id: "delivered",
-    label: "Delivered",
+    id: "reached",
+    label: "Reached",
     icon: (
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth="2"
-        d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
       />
     ),
     color: "text-green-600",
@@ -89,20 +75,15 @@ const getStatusStyle = (status) => {
       text: "text-blue-800",
       label: "Accepted",
     },
-    picked_up: {
-      bg: "bg-yellow-100",
-      text: "text-yellow-800",
-      label: "Picked Up",
-    },
     on_way: {
       bg: "bg-purple-100",
       text: "text-purple-800",
       label: "On The Way",
     },
-    delivered: {
+    reached: {
       bg: "bg-green-100",
       text: "text-green-800",
-      label: "Delivered",
+      label: "Reached",
     },
   };
   return styles[status] || styles.confirmed;
@@ -408,7 +389,7 @@ export default function OrderDetails({ params }) {
                 New Order Available!
               </h3>
               <p className="text-blue-700">
-                Quick action needed - Accept this order to start delivery
+                Quick action needed - Accept to start delivery
               </p>
             </div>
             <button
