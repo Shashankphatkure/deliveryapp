@@ -1,106 +1,107 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 export default function LoginHistory() {
   const [timeFilter, setTimeFilter] = useState("all");
   const [deviceFilter, setDeviceFilter] = useState("all");
+  const [sessions, setSessions] = useState({ current: null, history: [] });
+  const supabase = createClientComponentClient();
 
-  const sessions = {
-    current: {
-      id: "current",
-      deviceType: "Mobile",
-      deviceModel: "iPhone 13",
-      browser: "Safari",
-      os: "iOS 16.5",
-      ip: "192.168.1.1",
-      location: "Mumbai, India",
-      startTime: "Today, 9:30 AM",
-      status: "Active",
-      lastActive: "2 minutes ago",
-      duration: "6h 30m",
-      activities: [
-        {
-          type: "order_completed",
-          time: "11:30 AM",
-          details: "Completed order #1234",
+  useEffect(() => {
+    fetchLoginHistory();
+  }, [timeFilter]);
+
+  const fetchLoginHistory = async () => {
+    try {
+      // First get the current user's email
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("No authenticated user");
+
+      // Get time filter condition
+      const timeCondition = (() => {
+        const now = new Date();
+        switch (timeFilter) {
+          case "today":
+            return now.setDate(now.getDate() - 1);
+          case "week":
+            return now.setDate(now.getDate() - 7);
+          case "month":
+            return now.setDate(now.getDate() - 30);
+          default:
+            return now.setDate(now.getDate() - 90);
+        }
+      })();
+
+      // Fetch audit logs for the current user
+      const { data, error } = await supabase
+        .from("audit_log_entries")
+        .select("*")
+        .eq("payload->>actor_username", user.email)
+        .gte("created_at", new Date(timeCondition).toISOString())
+        .or(
+          "payload->>action.eq.login,payload->>action.eq.token_refreshed,payload->>action.eq.token_revoked,payload->>action.eq.user_signedup,payload->>action.eq.user_repeated_signup"
+        )
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      // Transform the data
+      const transformedSessions = data.map((entry) => ({
+        id: entry.id,
+        deviceType: "Browser",
+        deviceModel: "Unknown Device",
+        browser: entry.payload?.actor_via_sso ? "SSO Login" : "Direct Login",
+        os: "Unknown",
+        ip: entry.ip_address,
+        location: "Location not available",
+        startTime: new Date(entry.created_at).toLocaleString(),
+        status: getSessionStatus(entry.payload?.action),
+        userDetails: {
+          email: entry.payload?.actor_username,
+          provider: entry.payload?.traits?.provider || "email",
         },
-        { type: "break_started", time: "10:30 AM", details: "Started break" },
-        {
-          type: "driver_mode",
-          time: "9:30 AM",
-          details: "Turned on driver mode",
-        },
-      ],
-    },
-    history: [
-      {
-        id: 1,
-        deviceType: "Mobile",
-        deviceModel: "iPhone 13",
-        browser: "Safari",
-        os: "iOS 16.5",
-        ip: "192.168.1.2",
-        location: "Mumbai, India",
-        startTime: "Yesterday, 10:00 AM",
-        endTime: "Yesterday, 6:00 PM",
-        status: "Completed",
-        duration: "8h",
-        activities: [
-          { type: "logout", time: "6:00 PM", details: "Normal logout" },
-          {
-            type: "order_completed",
-            time: "5:30 PM",
-            details: "Completed order #1233",
-          },
-        ],
-      },
-      {
-        id: 2,
-        deviceType: "Desktop",
-        deviceModel: "Chrome Browser",
-        browser: "Chrome",
-        os: "Windows 11",
-        ip: "192.168.1.3",
-        location: "Mumbai, India",
-        startTime: "2 days ago, 9:00 AM",
-        endTime: "2 days ago, 5:00 PM",
-        status: "Completed",
-        duration: "8h",
-        activities: [
-          { type: "logout", time: "5:00 PM", details: "Normal logout" },
-          {
-            type: "profile_updated",
-            time: "4:30 PM",
-            details: "Updated vehicle information",
-          },
-        ],
-      },
-      {
-        id: 3,
-        deviceType: "Mobile",
-        deviceModel: "iPhone 13",
-        browser: "Safari",
-        os: "iOS 16.5",
-        ip: "192.168.1.4",
-        location: "Pune, India",
-        startTime: "3 days ago, 8:00 AM",
-        endTime: "3 days ago, 8:30 AM",
-        status: "Suspicious",
-        duration: "30m",
         activities: [
           {
-            type: "logout",
-            time: "8:30 AM",
-            details: "Suspicious activity detected",
-          },
-          {
-            type: "login_attempt",
-            time: "8:15 AM",
-            details: "Failed login attempt",
+            type: getActivityType(entry.payload?.action),
+            time: new Date(entry.created_at).toLocaleTimeString(),
+            details: getActivityDetails(entry),
           },
         ],
-      },
-    ],
+      }));
+
+      // Set the most recent session as current if it's within the last hour
+      const currentSession =
+        transformedSessions[0]?.created_at > Date.now() - 3600000
+          ? transformedSessions.shift()
+          : null;
+
+      setSessions({
+        current: currentSession,
+        history: transformedSessions,
+      });
+    } catch (error) {
+      console.error("Error fetching login history:", error);
+    }
+  };
+
+  const getSessionStatus = (action) => {
+    switch (action) {
+      case "token_revoked":
+        return "Ended";
+      case "user_signedup":
+        return "Signup";
+      case "user_repeated_signup":
+        return "Repeated Signup";
+      case "login":
+        return "Completed";
+      case "token_refreshed":
+        return "Active";
+      default:
+        return "Unknown";
+    }
   };
 
   const getActivityIcon = (type) => {
@@ -209,6 +210,45 @@ export default function LoginHistory() {
     }`;
   };
 
+  const getActivityType = (action) => {
+    switch (action) {
+      case "login":
+        return "login";
+      case "token_revoked":
+        return "logout";
+      case "token_refreshed":
+        return "session_refreshed";
+      case "user_signedup":
+        return "signup";
+      case "user_repeated_signup":
+        return "repeated_signup";
+      default:
+        return "unknown";
+    }
+  };
+
+  const getActivityDetails = (entry) => {
+    const action = entry.payload?.action;
+    const email = entry.payload?.actor_username;
+    const ip = entry.ip_address;
+    const provider = entry.payload?.traits?.provider || "email";
+
+    switch (action) {
+      case "login":
+        return `Logged in via ${provider} from ${ip}`;
+      case "token_revoked":
+        return `Logged out from ${ip}`;
+      case "token_refreshed":
+        return `Session refreshed from ${ip}`;
+      case "user_signedup":
+        return `Signed up via ${provider} from ${ip}`;
+      case "user_repeated_signup":
+        return `Repeated signup attempt via ${provider} from ${ip}`;
+      default:
+        return `Unknown activity from ${ip}`;
+    }
+  };
+
   return (
     <div className="p-4">
       <h1 className="text-2xl font-bold mb-4">Login History</h1>
@@ -271,8 +311,8 @@ export default function LoginHistory() {
                 />
               </svg>
               <span>
-                {sessions.current.deviceModel} • {sessions.current.browser} •{" "}
-                {sessions.current.os}
+                {sessions.current?.deviceModel} • {sessions.current?.browser} •{" "}
+                {sessions.current?.os}
               </span>
             </div>
             <div className="flex items-center text-sm text-gray-600">
@@ -296,7 +336,7 @@ export default function LoginHistory() {
                 />
               </svg>
               <span>
-                {sessions.current.location} • IP: {sessions.current.ip}
+                {sessions.current?.location} • IP: {sessions.current?.ip}
               </span>
             </div>
           </div>
@@ -308,7 +348,7 @@ export default function LoginHistory() {
             Recent Activity
           </h3>
           <div className="space-y-4">
-            {sessions.current.activities.map((activity, index) => (
+            {sessions.current?.activities.map((activity, index) => (
               <div key={index} className="flex items-start">
                 {getActivityIcon(activity.type)}
                 <div className="ml-3">
