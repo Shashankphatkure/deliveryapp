@@ -6,6 +6,7 @@ import "./utils/date";
 
 export default function Home() {
   const [isDriverModeOn, setIsDriverModeOn] = useState(false);
+  const [isLoadingDriverMode, setIsLoadingDriverMode] = useState(true);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingState, setPendingState] = useState(false);
   const [selectedTimeframe, setSelectedTimeframe] = useState("today");
@@ -53,7 +54,7 @@ export default function Home() {
     setShowConfirmModal(true);
   };
 
-  const confirmToggle = () => {
+  const confirmToggle = async () => {
     const allChecked = Object.values(checklist).every(
       (value) => value === true
     );
@@ -62,8 +63,28 @@ export default function Home() {
       return;
     }
 
-    setIsDriverModeOn(pendingState);
-    setShowConfirmModal(false);
+    try {
+      setIsLoadingDriverMode(true);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from("users")
+        .update({ is_active: pendingState })
+        .eq("auth_id", user.id);
+
+      if (error) throw error;
+
+      setIsDriverModeOn(pendingState);
+      setShowConfirmModal(false);
+    } catch (error) {
+      console.error("Error updating driver mode:", error);
+      alert("Failed to update driver mode. Please try again.");
+    } finally {
+      setIsLoadingDriverMode(false);
+    }
   };
 
   const handleChecklistChange = (item) => {
@@ -269,7 +290,31 @@ export default function Home() {
     }
   };
 
+  const fetchDriverModeStatus = async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: userData } = await supabase
+        .from("users")
+        .select("is_active")
+        .eq("auth_id", user.id)
+        .single();
+
+      if (userData) {
+        setIsDriverModeOn(userData.is_active);
+      }
+    } catch (error) {
+      console.error("Error fetching driver mode status:", error);
+    } finally {
+      setIsLoadingDriverMode(false);
+    }
+  };
+
   useEffect(() => {
+    fetchDriverModeStatus();
     fetchRecentActivity();
     fetchStatistics(selectedTimeframe);
     fetchTodayProgress();
