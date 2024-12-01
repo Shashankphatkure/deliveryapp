@@ -1,66 +1,224 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 export default function Reviews() {
   const [timeFilter, setTimeFilter] = useState("all");
   const [ratingFilter, setRatingFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
-
-  const stats = {
-    totalReviews: 156,
-    averageRating: 4.8,
+  const [reviews, setReviews] = useState([]);
+  const [stats, setStats] = useState({
+    totalReviews: 0,
+    averageRating: 0,
     ratingBreakdown: {
-      5: 70,
-      4: 20,
-      3: 5,
-      2: 3,
-      1: 2,
+      5: 0,
+      4: 0,
+      3: 0,
+      2: 0,
+      1: 0,
     },
-    badges: [
-      { name: "Professional Driver", count: 45 },
-      { name: "On Time", count: 38 },
-      { name: "Great Service", count: 32 },
-      { name: "Very Polite", count: 25 },
-    ],
+    badges: [],
+  });
+
+  const supabase = createClientComponentClient();
+
+  useEffect(() => {
+    fetchReviews();
+    calculateStats();
+  }, [timeFilter, ratingFilter, sortBy]);
+
+  const fetchReviews = async () => {
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+
+    if (sessionError || !session) {
+      console.error("Error getting session:", sessionError);
+      return;
+    }
+
+    let query = supabase
+      .from("user_reviews")
+      .select(
+        `
+        *,
+        orders (
+          id,
+          created_at,
+          customername,
+          status,
+          total_amount
+        ),
+        customers (
+          id,
+          full_name,
+          email
+        ),
+        stores (
+          id,
+          name
+        )
+      `
+      )
+      .eq("user_id", session.user.id);
+
+    // Apply filters
+    if (ratingFilter !== "all") {
+      query = query.eq("rating", parseInt(ratingFilter));
+    }
+
+    if (timeFilter !== "all") {
+      const date = new Date();
+      switch (timeFilter) {
+        case "week":
+          date.setDate(date.getDate() - 7);
+          break;
+        case "month":
+          date.setMonth(date.getMonth() - 1);
+          break;
+        case "year":
+          date.setFullYear(date.getFullYear() - 1);
+          break;
+      }
+      query = query.gte("created_at", date.toISOString());
+    }
+
+    // Apply sorting
+    switch (sortBy) {
+      case "newest":
+        query = query.order("created_at", { ascending: false });
+        break;
+      case "oldest":
+        query = query.order("created_at", { ascending: true });
+        break;
+      case "highest":
+        query = query.order("rating", { ascending: false });
+        break;
+      case "lowest":
+        query = query.order("rating", { ascending: true });
+        break;
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("Error fetching reviews:", error);
+      return;
+    }
+
+    // Transform the data to match your component's structure
+    const transformedReviews = data.map((review) => ({
+      id: review.id,
+      rating: review.rating,
+      date: formatDate(review.created_at),
+      orderId: review.order_id,
+      customerName: review.orders?.customername || "Anonymous",
+      comment: review.comment,
+      badges: review.badges || [],
+      orderDetails: {
+        restaurant: review.restaurant_name,
+        orderDate: formatDate(review.orders?.created_at),
+        status: review.orders?.status,
+        amount: review.orders?.total_amount
+          ? new Intl.NumberFormat("en-IN", {
+              style: "currency",
+              currency: "INR",
+            }).format(review.orders.total_amount)
+          : "N/A",
+      },
+    }));
+
+    setReviews(transformedReviews);
   };
 
-  const reviews = [
-    {
-      id: 1,
-      rating: 5,
-      date: "2 days ago",
-      orderId: "1234",
-      customerName: "Rahul M.",
-      comment:
-        "Great service and very professional delivery. The driver was polite and on time.",
-      badges: ["Professional Driver", "On Time"],
-      response: null,
-      helpful: 3,
-      orderDetails: {
-        restaurant: "Pizza Hub",
-        amount: "₹950",
-        date: "March 15, 2024",
+  const calculateStats = async () => {
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+
+    if (sessionError || !session) {
+      console.error("Error getting session:", sessionError);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("user_reviews")
+      .select("rating, badges")
+      .eq("user_id", session.user.id);
+
+    if (error) {
+      console.error("Error fetching stats:", error);
+      return;
+    }
+
+    // Calculate average rating
+    const totalReviews = data.length;
+    const averageRating =
+      totalReviews > 0
+        ? data.reduce((acc, review) => acc + review.rating, 0) / totalReviews
+        : 0;
+
+    // Calculate rating breakdown
+    const ratingBreakdown = data.reduce(
+      (acc, review) => {
+        acc[review.rating] = (acc[review.rating] || 0) + 1;
+        return acc;
       },
-    },
-    {
-      id: 2,
-      rating: 4,
-      date: "1 week ago",
-      orderId: "1235",
-      customerName: "Priya S.",
-      comment: "Good delivery service, but took a bit longer than expected.",
-      badges: ["Professional Driver"],
-      response:
-        "Thank you for your feedback. We strive to improve our delivery times.",
-      helpful: 1,
-      orderDetails: {
-        restaurant: "Burger King",
-        amount: "₹750",
-        date: "March 10, 2024",
-      },
-    },
-    // Add more reviews as needed
-  ];
+      {
+        1: 0,
+        2: 0,
+        3: 0,
+        4: 0,
+        5: 0,
+      }
+    );
+
+    // Convert to percentages
+    Object.keys(ratingBreakdown).forEach((rating) => {
+      ratingBreakdown[rating] =
+        totalReviews > 0
+          ? Math.round((ratingBreakdown[rating] / totalReviews) * 100)
+          : 0;
+    });
+
+    // Calculate badge counts
+    const badgeCounts = data.reduce((acc, review) => {
+      (review.badges || []).forEach((badge) => {
+        acc[badge] = (acc[badge] || 0) + 1;
+      });
+      return acc;
+    }, {});
+
+    const badges = Object.entries(badgeCounts).map(([name, count]) => ({
+      name,
+      count,
+    }));
+
+    setStats({
+      totalReviews,
+      averageRating: averageRating.toFixed(1),
+      ratingBreakdown,
+      badges,
+    });
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 1) return "yesterday";
+    if (diffDays <= 7) return `${diffDays} days ago`;
+    if (diffDays <= 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+    return date.toLocaleDateString("en-IN", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
 
   return (
     <div className="p-4">
@@ -207,38 +365,19 @@ export default function Reviews() {
                   Order #{review.orderId} • {review.date}
                 </p>
               </div>
-              <button className="text-gray-400 hover:text-gray-600">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
-                  />
-                </svg>
-              </button>
             </div>
 
             {/* Order Details */}
             <div className="bg-gray-50 rounded p-2 mb-3 text-sm">
-              <div className="flex justify-between text-gray-600">
+              <div className="text-gray-600">
                 <span>{review.orderDetails.restaurant}</span>
-                <span>{review.orderDetails.amount}</span>
-              </div>
-              <div className="text-gray-500 text-xs">
-                {review.orderDetails.date}
               </div>
             </div>
 
             <p className="text-gray-600 mb-3">{review.comment}</p>
 
             {/* Badges */}
-            <div className="flex flex-wrap gap-2 mb-3">
+            <div className="flex flex-wrap gap-2">
               {review.badges.map((badge) => (
                 <span
                   key={badge}
@@ -247,39 +386,6 @@ export default function Reviews() {
                   {badge}
                 </span>
               ))}
-            </div>
-
-            {/* Response */}
-            {review.response && (
-              <div className="bg-gray-50 rounded p-3 mb-3">
-                <p className="text-sm font-medium mb-1">Your Response:</p>
-                <p className="text-sm text-gray-600">{review.response}</p>
-              </div>
-            )}
-
-            {/* Actions */}
-            <div className="flex items-center justify-between text-sm">
-              <button className="flex items-center text-gray-500 hover:text-blue-600">
-                <svg
-                  className="w-4 h-4 mr-1"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"
-                  />
-                </svg>
-                <span>Helpful ({review.helpful})</span>
-              </button>
-              {!review.response && (
-                <button className="text-blue-600 hover:text-blue-700">
-                  Respond to Review
-                </button>
-              )}
             </div>
           </div>
         ))}
