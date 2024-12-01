@@ -14,7 +14,6 @@ export default function LoginHistory() {
 
   const fetchLoginHistory = async () => {
     try {
-      // First get the current user's email
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -35,56 +34,90 @@ export default function LoginHistory() {
         }
       })();
 
-      // Fetch audit logs for the current user
-      const { data, error } = await supabase
-        .from("audit_log_entries")
-        .select("*")
-        .eq("payload->>actor_username", user.email)
-        .gte("created_at", new Date(timeCondition).toISOString())
-        .or(
-          "payload->>action.eq.login,payload->>action.eq.token_refreshed,payload->>action.eq.token_revoked,payload->>action.eq.user_signedup,payload->>action.eq.user_repeated_signup"
-        )
-        .order("created_at", { ascending: false });
+      // Use rpc to access auth.sessions
+      const { data, error } = await supabase.rpc("get_sessions_for_user", {
+        user_id_input: user.id,
+        time_filter: new Date(timeCondition).toISOString(),
+      });
 
       if (error) throw error;
 
       // Transform the data
-      const transformedSessions = data.map((entry) => ({
-        id: entry.id,
-        deviceType: "Browser",
-        deviceModel: "Unknown Device",
-        browser: entry.payload?.actor_via_sso ? "SSO Login" : "Direct Login",
-        os: "Unknown",
-        ip: entry.ip_address,
-        location: "Location not available",
-        startTime: new Date(entry.created_at).toLocaleString(),
-        status: getSessionStatus(entry.payload?.action),
-        userDetails: {
-          email: entry.payload?.actor_username,
-          provider: entry.payload?.traits?.provider || "email",
-        },
-        activities: [
-          {
-            type: getActivityType(entry.payload?.action),
-            time: new Date(entry.created_at).toLocaleTimeString(),
-            details: getActivityDetails(entry),
-          },
-        ],
-      }));
+      const transformedSessions = data.map((session) => {
+        const userAgent = parseUserAgent(session.user_agent);
+        return {
+          id: session.id,
+          deviceType: userAgent.device,
+          deviceModel: userAgent.model || "Unknown Device",
+          browser: userAgent.browser || "Unknown Browser",
+          os: userAgent.os || "Unknown OS",
+          ip: session.ip,
+          location: "Location not available", // Could be enhanced with IP geolocation
+          startTime: new Date(session.created_at).toLocaleString(),
+          endTime: session.not_after
+            ? new Date(session.not_after).toLocaleString()
+            : "Active",
+          status:
+            session.not_after && new Date(session.not_after) < new Date()
+              ? "Ended"
+              : "Active",
+          activities: [
+            {
+              type:
+                session.not_after && new Date(session.not_after) < new Date()
+                  ? "logout"
+                  : "login",
+              time: new Date(session.created_at).toLocaleTimeString(),
+              details: `${
+                session.not_after && new Date(session.not_after) < new Date()
+                  ? "Session ended"
+                  : "Session started"
+              } from ${session.ip}`,
+            },
+          ],
+        };
+      });
 
-      // Set the most recent session as current if it's within the last hour
-      const currentSession =
-        transformedSessions[0]?.created_at > Date.now() - 3600000
-          ? transformedSessions.shift()
-          : null;
+      // Set current session
+      const currentSession = transformedSessions.find(
+        (session) => session.status === "Active"
+      );
 
       setSessions({
         current: currentSession,
-        history: transformedSessions,
+        history: transformedSessions.filter(
+          (session) => session !== currentSession
+        ),
       });
     } catch (error) {
       console.error("Error fetching login history:", error);
     }
+  };
+
+  const parseUserAgent = (userAgentString) => {
+    if (!userAgentString) return {};
+
+    const ua = userAgentString.toLowerCase();
+    const result = {
+      device: "Browser",
+      browser: "Unknown",
+      os: "Unknown",
+    };
+
+    // Basic browser detection
+    if (ua.includes("firefox")) result.browser = "Firefox";
+    else if (ua.includes("chrome")) result.browser = "Chrome";
+    else if (ua.includes("safari")) result.browser = "Safari";
+    else if (ua.includes("edge")) result.browser = "Edge";
+
+    // Basic OS detection
+    if (ua.includes("windows")) result.os = "Windows";
+    else if (ua.includes("mac")) result.os = "MacOS";
+    else if (ua.includes("linux")) result.os = "Linux";
+    else if (ua.includes("android")) result.os = "Android";
+    else if (ua.includes("ios")) result.os = "iOS";
+
+    return result;
   };
 
   const getSessionStatus = (action) => {
