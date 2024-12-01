@@ -18,6 +18,7 @@ export default function Home() {
   });
   const [recentActivity, setRecentActivity] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [userName, setUserName] = useState("Driver");
   const supabase = createClientComponentClient();
 
   const handleToggle = (newState) => {
@@ -70,10 +71,9 @@ export default function Home() {
 
       if (!user) return;
 
-      // First get the user's record from the users table
       const { data: userData, error: userError } = await supabase
         .from("users")
-        .select("id")
+        .select("id, full_name")
         .eq("auth_id", user.id)
         .single();
 
@@ -83,7 +83,8 @@ export default function Home() {
         return;
       }
 
-      // Fetch recent orders
+      setUserName(userData.full_name || "Driver");
+
       const { data, error } = await supabase
         .from("orders")
         .select(
@@ -115,8 +116,15 @@ export default function Home() {
       <div className="mb-6">
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-2xl font-bold">Welcome, Driver!</h1>
-            <p className="text-gray-600">Monday, 18 March 2024</p>
+            <h1 className="text-xl font-bold">Welcome, {userName}!</h1>
+            <p className="text-gray-600">
+              {new Date().toLocaleDateString("en-US", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
+            </p>
           </div>
           <div className="bg-blue-100 px-3 py-1 rounded-full">
             <span className="text-sm text-blue-800 font-medium">
