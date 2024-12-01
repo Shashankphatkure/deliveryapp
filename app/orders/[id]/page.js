@@ -33,6 +33,7 @@ const ORDER_STATUSES = [
     color: "text-blue-600",
     bgColor: "bg-blue-100",
   },
+
   {
     id: "on_way",
     label: "On The Way",
@@ -74,6 +75,11 @@ const getStatusStyle = (status) => {
       bg: "bg-blue-100",
       text: "text-blue-800",
       label: "Accepted",
+    },
+    picked_up: {
+      bg: "bg-yellow-100",
+      text: "text-yellow-800",
+      label: "Picked Up",
     },
     on_way: {
       bg: "bg-purple-100",
@@ -410,6 +416,40 @@ export default function OrderDetails({ params }) {
                 />
               </svg>
               Accept Order
+            </button>
+          </div>
+        </div>
+      )}
+
+      {currentStatus === "on_way" && (
+        <div className="bg-purple-50 border-2 border-purple-200 rounded-lg p-4 mb-4 animate-pulse">
+          <div className="flex flex-col sm:flex-row items-center justify-between">
+            <div className="mb-4 sm:mb-0">
+              <h3 className="text-lg font-semibold text-purple-900">
+                Arrived at Destination?
+              </h3>
+              <p className="text-purple-700">
+                Quick action needed - Mark as reached to complete delivery
+              </p>
+            </div>
+            <button
+              onClick={() => handleStatusChange("reached")}
+              className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-medium text-base flex items-center justify-center"
+            >
+              <svg
+                className="w-5 h-5 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                />
+              </svg>
+              Mark as Reached
             </button>
           </div>
         </div>
