@@ -1,12 +1,156 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 export default function Earnings() {
   const [dateRange, setDateRange] = useState({
     from: new Date().toISOString().split("T")[0],
     to: new Date().toISOString().split("T")[0],
   });
+  const [orders, setOrders] = useState([]);
+  const [summary, setSummary] = useState({
+    today: { total: 0, count: 0 },
+    week: { total: 0, count: 0 },
+    month: { total: 0, count: 0 },
+    lastMonth: { total: 0, count: 0 },
+  });
+  const [user, setUser] = useState(null);
+  const supabase = createClientComponentClient();
+
+  useEffect(() => {
+    // Get the logged-in user
+    const getUser = async () => {
+      const {
+        data: { user: currentUser },
+      } = await supabase.auth.getUser();
+      if (currentUser) {
+        // Get the driver details from users table
+        const { data: driverData } = await supabase
+          .from("users")
+          .select("*")
+          .eq("auth_id", currentUser.id)
+          .single();
+
+        setUser(driverData);
+      }
+    };
+
+    getUser();
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchOrders();
+      calculateSummary();
+    }
+  }, [dateRange, user]);
+
+  const fetchOrders = async () => {
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("orders")
+      .select("*")
+      .eq("status", "delivered")
+      .eq("driverid", user.id)
+      .gte("created_at", dateRange.from)
+      .lte("created_at", dateRange.to)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching orders:", error);
+      return;
+    }
+    setOrders(data || []);
+  };
+
+  const calculateSummary = async () => {
+    if (!user) return;
+
+    const now = new Date();
+    const startOfToday = new Date(now.setHours(0, 0, 0, 0)).toISOString();
+    const startOfWeek = new Date(
+      now.setDate(now.getDate() - now.getDay())
+    ).toISOString();
+    const startOfMonth = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      1
+    ).toISOString();
+    const startOfLastMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() - 1,
+      1
+    ).toISOString();
+    const endOfLastMonth = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      0
+    ).toISOString();
+
+    // Fetch summary data for different periods
+    const { data: todayData } = await supabase
+      .from("orders")
+      .select("total_amount")
+      .eq("status", "delivered")
+      .eq("driverid", user.id)
+      .gte("created_at", startOfToday);
+
+    const { data: weekData } = await supabase
+      .from("orders")
+      .select("total_amount")
+      .eq("status", "delivered")
+      .eq("driverid", user.id)
+      .gte("created_at", startOfWeek);
+
+    const { data: monthData } = await supabase
+      .from("orders")
+      .select("total_amount")
+      .eq("status", "delivered")
+      .eq("driverid", user.id)
+      .gte("created_at", startOfMonth);
+
+    const { data: lastMonthData } = await supabase
+      .from("orders")
+      .select("total_amount")
+      .eq("status", "delivered")
+      .eq("driverid", user.id)
+      .gte("created_at", startOfLastMonth)
+      .lte("created_at", endOfLastMonth);
+
+    setSummary({
+      today: {
+        total: sumTotal(todayData),
+        count: todayData?.length || 0,
+      },
+      week: {
+        total: sumTotal(weekData),
+        count: weekData?.length || 0,
+      },
+      month: {
+        total: sumTotal(monthData),
+        count: monthData?.length || 0,
+      },
+      lastMonth: {
+        total: sumTotal(lastMonthData),
+        count: lastMonthData?.length || 0,
+      },
+    });
+  };
+
+  const sumTotal = (data) => {
+    return (
+      data?.reduce(
+        (sum, order) => sum + (Number(order.total_amount) || 0),
+        0
+      ) || 0
+    );
+  };
+
+  if (!user) {
+    return <div className="p-4">Loading...</div>;
+  }
 
   return (
     <div className="p-4">
@@ -69,23 +213,37 @@ export default function Earnings() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-gray-50 p-3 rounded-lg">
             <p className="text-gray-600 text-sm">Today</p>
-            <p className="text-2xl font-bold">₹2,450.00</p>
-            <p className="text-sm text-gray-500">3 orders</p>
+            <p className="text-2xl font-bold">
+              ₹{summary.today.total.toFixed(2)}
+            </p>
+            <p className="text-sm text-gray-500">
+              {summary.today.count} orders
+            </p>
           </div>
           <div className="bg-gray-50 p-3 rounded-lg">
             <p className="text-gray-600 text-sm">This Week</p>
-            <p className="text-2xl font-bold">₹8,450.00</p>
-            <p className="text-sm text-gray-500">8 orders</p>
+            <p className="text-2xl font-bold">
+              ₹{summary.week.total.toFixed(2)}
+            </p>
+            <p className="text-sm text-gray-500">{summary.week.count} orders</p>
           </div>
           <div className="bg-gray-50 p-3 rounded-lg">
             <p className="text-gray-600 text-sm">This Month</p>
-            <p className="text-2xl font-bold">₹32,150.00</p>
-            <p className="text-sm text-gray-500">35 orders</p>
+            <p className="text-2xl font-bold">
+              ₹{summary.month.total.toFixed(2)}
+            </p>
+            <p className="text-sm text-gray-500">
+              {summary.month.count} orders
+            </p>
           </div>
           <div className="bg-gray-50 p-3 rounded-lg">
             <p className="text-gray-600 text-sm">Last Month</p>
-            <p className="text-2xl font-bold">₹28,900.00</p>
-            <p className="text-sm text-gray-500">31 orders</p>
+            <p className="text-2xl font-bold">
+              ₹{summary.lastMonth.total.toFixed(2)}
+            </p>
+            <p className="text-sm text-gray-500">
+              {summary.lastMonth.count} orders
+            </p>
           </div>
         </div>
       </div>
@@ -96,16 +254,18 @@ export default function Earnings() {
           <h2 className="text-lg font-semibold">Earnings History</h2>
         </div>
         <div className="divide-y">
-          {[1, 2, 3].map((item) => (
+          {orders.map((order) => (
             <Link
-              href={`/earnings/${item}`}
-              key={item}
+              href={`/earnings/${order.id}`}
+              key={order.id}
               className="block p-4 hover:bg-gray-50"
             >
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="font-medium">Order #123{item}</p>
-                  <p className="text-sm text-gray-500">Today, 2:30 PM</p>
+                  <p className="font-medium">Order #{order.id}</p>
+                  <p className="text-sm text-gray-500">
+                    {new Date(order.created_at).toLocaleString()}
+                  </p>
                   <div className="flex items-center text-sm text-gray-500 mt-1">
                     <svg
                       className="w-4 h-4 mr-1"
@@ -120,12 +280,20 @@ export default function Earnings() {
                         d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
                       />
                     </svg>
-                    <span>5.2 km • 25 mins</span>
+                    <span>
+                      {order.distance} • {order.time}
+                    </span>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="font-medium text-green-600">+₹950.00</span>
-                  <p className="text-xs text-gray-500 mt-1">Inc. ₹50 bonus</p>
+                  <span className="font-medium text-green-600">
+                    +₹{Number(order.total_amount).toFixed(2)}
+                  </span>
+                  {order.delivery_notes && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {order.delivery_notes}
+                    </p>
+                  )}
                 </div>
               </div>
             </Link>

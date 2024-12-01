@@ -1,6 +1,20 @@
 import Link from "next/link";
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
 
-export default function EarningDetail({ params }) {
+export default async function EarningDetail({ params }) {
+  const supabase = createServerComponentClient({ cookies });
+
+  const { data: order } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("id", params.id)
+    .single();
+
+  if (!order) {
+    return <div>Order not found</div>;
+  }
+
   return (
     <div className="p-4">
       <div className="flex items-center mb-4">
@@ -19,29 +33,29 @@ export default function EarningDetail({ params }) {
             />
           </svg>
         </Link>
-        <h1 className="text-2xl font-bold">Order #123{params.id}</h1>
+        <h1 className="text-2xl font-bold">Order #{order.id}</h1>
       </div>
 
       {/* Earning Summary */}
       <div className="bg-white rounded-lg shadow p-4 mb-4">
         <div className="flex justify-between items-center mb-4">
           <span className="bg-green-100 text-green-800 text-sm font-medium px-3 py-1 rounded">
-            Completed
+            {order.status}
           </span>
-          <span className="text-lg font-bold">₹950.00</span>
+          <span className="text-lg font-bold">₹{order.total_amount}</span>
         </div>
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">Date & Time</span>
-            <span>March 15, 2024, 2:30 PM</span>
+            <span>{new Date(order.created_at).toLocaleString()}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">Distance</span>
-            <span>5.2 km</span>
+            <span>{order.distance}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">Duration</span>
-            <span>25 mins</span>
+            <span>{order.time}</span>
           </div>
         </div>
       </div>
@@ -98,9 +112,7 @@ export default function EarningDetail({ params }) {
             </div>
             <div>
               <p className="font-medium">Pickup Location</p>
-              <p className="text-sm text-gray-600">
-                123 Restaurant Street, Mumbai
-              </p>
+              <p className="text-sm text-gray-600">{order.start}</p>
             </div>
           </div>
 
@@ -128,9 +140,7 @@ export default function EarningDetail({ params }) {
             </div>
             <div>
               <p className="font-medium">Drop Location</p>
-              <p className="text-sm text-gray-600">
-                456 Customer Avenue, Mumbai
-              </p>
+              <p className="text-sm text-gray-600">{order.destination}</p>
             </div>
           </div>
         </div>
