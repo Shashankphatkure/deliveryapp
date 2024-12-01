@@ -6,6 +6,20 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 const ORDER_STATUSES = [
   {
+    id: "confirmed",
+    label: "Confirmed",
+    icon: (
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
+    ),
+    color: "text-indigo-600",
+    bgColor: "bg-indigo-100",
+  },
+  {
     id: "accepted",
     label: "Accepted",
     icon: (
@@ -65,6 +79,11 @@ const ORDER_STATUSES = [
 
 const getStatusStyle = (status) => {
   const styles = {
+    confirmed: {
+      bg: "bg-indigo-100",
+      text: "text-indigo-800",
+      label: "Confirmed",
+    },
     accepted: {
       bg: "bg-blue-100",
       text: "text-blue-800",
@@ -86,7 +105,7 @@ const getStatusStyle = (status) => {
       label: "Delivered",
     },
   };
-  return styles[status] || styles.accepted;
+  return styles[status] || styles.confirmed;
 };
 
 const StatusSelector = ({ currentStatus, handleStatusChange }) => {
@@ -162,7 +181,7 @@ export default function OrderDetails({ params }) {
   const [otherMethod, setOtherMethod] = useState("");
   const [cancelReason, setCancelReason] = useState("");
   const [photoProof, setPhotoProof] = useState(null);
-  const [currentStatus, setCurrentStatus] = useState("accepted");
+  const [currentStatus, setCurrentStatus] = useState(null);
 
   useEffect(() => {
     if (id) {
@@ -223,10 +242,10 @@ export default function OrderDetails({ params }) {
 
       if (error) throw error;
 
+      console.log("Order status from DB:", data.status);
+
       setOrder(data);
-      if (data.status) {
-        setCurrentStatus(data.status);
-      }
+      setCurrentStatus(data.status);
     } catch (error) {
       console.error("Error fetching order:", error);
     } finally {
@@ -379,6 +398,41 @@ export default function OrderDetails({ params }) {
         </button>
         <h1 className="text-xl sm:text-2xl font-bold">Order #{order.id}</h1>
       </div>
+
+      {/* Accept Order Box */}
+      {currentStatus === "confirmed" && (
+        <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mb-4 animate-pulse">
+          <div className="flex flex-col sm:flex-row items-center justify-between">
+            <div className="mb-4 sm:mb-0">
+              <h3 className="text-lg font-semibold text-blue-900">
+                New Order Available!
+              </h3>
+              <p className="text-blue-700">
+                Quick action needed - Accept this order to start delivery
+              </p>
+            </div>
+            <button
+              onClick={() => handleStatusChange("accepted")}
+              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium text-base flex items-center justify-center"
+            >
+              <svg
+                className="w-5 h-5 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              Accept Order
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Timer and Status Bar */}
       <div className="bg-blue-50 p-3 sm:p-4 rounded-lg mb-4">
