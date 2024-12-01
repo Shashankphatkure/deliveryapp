@@ -424,100 +424,105 @@ export default function OrderDetails({ params }) {
         <h1 className="text-xl sm:text-2xl font-bold">Order #{order.id}</h1>
       </div>
 
-      {/* Accept Order Box */}
-      {currentStatus === "confirmed" && (
-        <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mb-4 animate-pulse">
-          <div className="flex flex-col sm:flex-row items-center justify-between">
-            <div className="mb-4 sm:mb-0">
-              <h3 className="text-lg font-semibold text-blue-900">
-                New Order Available!
-              </h3>
-              <p className="text-blue-700">
-                Quick action needed - Accept to start delivery
-              </p>
+      {/* Only show status-related components if order is not cancelled */}
+      {currentStatus !== "cancelled" && (
+        <>
+          {/* Accept Order Box */}
+          {currentStatus === "confirmed" && (
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mb-4 animate-pulse">
+              <div className="flex flex-col sm:flex-row items-center justify-between">
+                <div className="mb-4 sm:mb-0">
+                  <h3 className="text-lg font-semibold text-blue-900">
+                    New Order Available!
+                  </h3>
+                  <p className="text-blue-700">
+                    Quick action needed - Accept to start delivery
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleStatusChange("accepted")}
+                  className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium text-base flex items-center justify-center"
+                >
+                  <svg
+                    className="w-5 h-5 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  Accept Order
+                </button>
+              </div>
             </div>
-            <button
-              onClick={() => handleStatusChange("accepted")}
-              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium text-base flex items-center justify-center"
-            >
-              <svg
-                className="w-5 h-5 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-              Accept Order
-            </button>
-          </div>
-        </div>
-      )}
+          )}
 
-      {currentStatus === "on_way" && (
-        <div className="bg-purple-50 border-2 border-purple-200 rounded-lg p-4 mb-4 animate-pulse">
-          <div className="flex flex-col sm:flex-row items-center justify-between">
-            <div className="mb-4 sm:mb-0">
-              <h3 className="text-lg font-semibold text-purple-900">
-                Arrived at Destination?
-              </h3>
-              <p className="text-purple-700">
-                Quick action needed - Mark as reached to deliver
-              </p>
+          {currentStatus === "on_way" && (
+            <div className="bg-purple-50 border-2 border-purple-200 rounded-lg p-4 mb-4 animate-pulse">
+              <div className="flex flex-col sm:flex-row items-center justify-between">
+                <div className="mb-4 sm:mb-0">
+                  <h3 className="text-lg font-semibold text-purple-900">
+                    Arrived at Destination?
+                  </h3>
+                  <p className="text-purple-700">
+                    Quick action needed - Mark as reached to deliver
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleStatusChange("reached")}
+                  className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-medium text-base flex items-center justify-center"
+                >
+                  <svg
+                    className="w-5 h-5 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                    />
+                  </svg>
+                  Reached
+                </button>
+              </div>
             </div>
-            <button
-              onClick={() => handleStatusChange("reached")}
-              className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-medium text-base flex items-center justify-center"
-            >
-              <svg
-                className="w-5 h-5 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                />
-              </svg>
-              Reached
-            </button>
+          )}
+
+          {/* Timer and Status Bar */}
+          <div className="bg-blue-50 p-3 sm:p-4 rounded-lg mb-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-xs sm:text-sm text-blue-600">Order Time</p>
+                <p className="text-lg sm:text-2xl font-bold text-blue-800">
+                  {new Date(order.created_at).toLocaleTimeString()}
+                </p>
+              </div>
+              <div className="text-right">
+                <span
+                  className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    getStatusStyle(currentStatus).bg
+                  } ${getStatusStyle(currentStatus).text}`}
+                >
+                  {getStatusStyle(currentStatus).label}
+                </span>
+              </div>
+            </div>
           </div>
-        </div>
+
+          <StatusSelector
+            currentStatus={currentStatus}
+            handleStatusChange={handleStatusChange}
+          />
+        </>
       )}
-
-      {/* Timer and Status Bar */}
-      <div className="bg-blue-50 p-3 sm:p-4 rounded-lg mb-4">
-        <div className="flex justify-between items-center">
-          <div>
-            <p className="text-xs sm:text-sm text-blue-600">Order Time</p>
-            <p className="text-lg sm:text-2xl font-bold text-blue-800">
-              {new Date(order.created_at).toLocaleTimeString()}
-            </p>
-          </div>
-          <div className="text-right">
-            <span
-              className={`px-3 py-1 rounded-full text-sm font-medium ${
-                getStatusStyle(currentStatus).bg
-              } ${getStatusStyle(currentStatus).text}`}
-            >
-              {getStatusStyle(currentStatus).label}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <StatusSelector
-        currentStatus={currentStatus}
-        handleStatusChange={handleStatusChange}
-      />
 
       {/* Order Details */}
       <div className="bg-white rounded-lg shadow p-3 sm:p-4 mb-4">
@@ -649,25 +654,27 @@ export default function OrderDetails({ params }) {
             Mark as Delivered
           </button>
         )}
-        <button
-          onClick={() => setShowCancelModal(true)}
-          className="w-full bg-red-500 text-white py-2.5 sm:py-3 rounded-lg font-medium text-sm sm:text-base flex items-center justify-center"
-        >
-          <svg
-            className="w-5 h-5 mr-2"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        {currentStatus !== "cancelled" && (
+          <button
+            onClick={() => setShowCancelModal(true)}
+            className="w-full bg-red-500 text-white py-2.5 sm:py-3 rounded-lg font-medium text-sm sm:text-base flex items-center justify-center"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-          Cancel Order
-        </button>
+            <svg
+              className="w-5 h-5 mr-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+            Cancel Order
+          </button>
+        )}
         <button
           onClick={() => setShowSupportModal(true)}
           className="w-full border border-gray-300 text-gray-700 py-2.5 sm:py-3 rounded-lg font-medium text-sm sm:text-base flex items-center justify-center"
