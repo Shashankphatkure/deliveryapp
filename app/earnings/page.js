@@ -52,7 +52,7 @@ export default function Earnings() {
     const { data, error } = await supabase
       .from("orders")
       .select("*")
-      .eq("status", "delivered")
+      .in("status", ["delivered", "paid"])
       .eq("driverid", user.id)
       .gte("created_at", dateRange.from)
       .lte("created_at", dateRange.to)
@@ -93,28 +93,28 @@ export default function Earnings() {
     const { data: todayData } = await supabase
       .from("orders")
       .select("total_amount")
-      .eq("status", "delivered")
+      .in("status", ["delivered", "paid"])
       .eq("driverid", user.id)
       .gte("created_at", startOfToday);
 
     const { data: weekData } = await supabase
       .from("orders")
       .select("total_amount")
-      .eq("status", "delivered")
+      .in("status", ["delivered", "paid"])
       .eq("driverid", user.id)
       .gte("created_at", startOfWeek);
 
     const { data: monthData } = await supabase
       .from("orders")
       .select("total_amount")
-      .eq("status", "delivered")
+      .in("status", ["delivered", "paid"])
       .eq("driverid", user.id)
       .gte("created_at", startOfMonth);
 
     const { data: lastMonthData } = await supabase
       .from("orders")
       .select("total_amount")
-      .eq("status", "delivered")
+      .in("status", ["delivered", "paid"])
       .eq("driverid", user.id)
       .gte("created_at", startOfLastMonth)
       .lte("created_at", endOfLastMonth);
