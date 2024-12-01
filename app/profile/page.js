@@ -8,35 +8,73 @@ export default function Profile() {
   const router = useRouter();
   const supabase = createClientComponentClient();
   const [userData, setUserData] = useState({ full_name: "Loading..." });
+  const [stats, setStats] = useState({
+    totalOrders: 0,
+    monthlyOrders: 0,
+    penalties: 0,
+  });
 
   useEffect(() => {
-    const fetchUserData = async () => {
+    const fetchData = async () => {
       try {
-        // Get current user
+        // Get current auth user
         const {
           data: { user },
           error: authError,
         } = await supabase.auth.getUser();
         if (authError) throw authError;
 
-        // Get user details from users table
-        const { data, error } = await supabase
+        // Get user details using auth_id
+        const { data: userData, error: userError } = await supabase
           .from("users")
-          .select("full_name")
+          .select("*") // Select all fields to get vehicle info, etc.
           .eq("auth_id", user.id)
           .single();
+        if (userError) throw userError;
+        if (userData) setUserData(userData);
 
-        if (error) throw error;
-        if (data) {
-          setUserData(data);
-        }
+        // Get total orders (delivered + paid)
+        const { count: totalOrders, error: totalError } = await supabase
+          .from("orders")
+          .select("*", { count: "exact" })
+          .eq("driverid", userData.id) // Use users.id instead of auth.id
+          .eq("status", "delivered");
+
+        if (totalError) throw totalError;
+
+        // Get this month's orders
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+
+        const { count: monthlyOrders, error: monthlyError } = await supabase
+          .from("orders")
+          .select("*", { count: "exact" })
+          .eq("driverid", userData.id) // Use users.id instead of auth.id
+          .eq("status", "delivered")
+          .eq("payment_status", "completed")
+          .gte("created_at", startOfMonth.toISOString());
+        if (monthlyError) throw monthlyError;
+
+        // Get total penalties
+        const { count: penalties, error: penaltyError } = await supabase
+          .from("penalties")
+          .select("*", { count: "exact" })
+          .eq("driver_id", userData.id); // Use users.id instead of auth.id
+        if (penaltyError) throw penaltyError;
+
+        setStats({
+          totalOrders: totalOrders || 0,
+          monthlyOrders: monthlyOrders || 0,
+          penalties: penalties || 0,
+        });
       } catch (error) {
-        console.error("Error fetching user data:", error.message);
+        console.error("Error fetching data:", error.message);
       }
     };
 
-    fetchUserData();
-  }, []);
+    fetchData();
+  }, [supabase]);
 
   const handleLogout = async () => {
     try {
@@ -102,15 +140,15 @@ export default function Profile() {
       <div className="grid grid-cols-3 gap-4 mb-4">
         <div className="bg-white rounded-lg shadow p-3 text-center">
           <p className="text-gray-600 text-sm">Total Orders</p>
-          <p className="text-xl font-bold">156</p>
+          <p className="text-xl font-bold">{stats.totalOrders}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-3 text-center">
           <p className="text-gray-600 text-sm">This Month</p>
-          <p className="text-xl font-bold">32</p>
+          <p className="text-xl font-bold">{stats.monthlyOrders}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-3 text-center">
           <p className="text-gray-600 text-sm">Penalties</p>
-          <p className="text-xl font-bold">0</p>
+          <p className="text-xl font-bold">{stats.penalties}</p>
         </div>
       </div>
 
