@@ -45,6 +45,12 @@ export default function LoginHistory() {
       // Transform the data
       const transformedSessions = data.map((session) => {
         const userAgent = parseUserAgent(session.user_agent);
+        const now = new Date();
+        const notAfterDate = session.not_after
+          ? new Date(session.not_after)
+          : null;
+        const isActive = !notAfterDate || notAfterDate > now;
+
         return {
           id: session.id,
           deviceType: userAgent.device,
@@ -52,42 +58,37 @@ export default function LoginHistory() {
           browser: userAgent.browser || "Unknown Browser",
           os: userAgent.os || "Unknown OS",
           ip: session.ip,
-          location: "Location not available", // Could be enhanced with IP geolocation
+          location: "Location not available",
           startTime: new Date(session.created_at).toLocaleString(),
-          endTime: session.not_after
-            ? new Date(session.not_after).toLocaleString()
-            : "Active",
-          status:
-            session.not_after && new Date(session.not_after) < new Date()
-              ? "Ended"
-              : "Active",
+          endTime: notAfterDate ? notAfterDate.toLocaleString() : "Active",
+          status: isActive ? "Active" : "Ended",
           activities: [
             {
-              type:
-                session.not_after && new Date(session.not_after) < new Date()
-                  ? "logout"
-                  : "login",
+              type: isActive ? "login" : "logout",
               time: new Date(session.created_at).toLocaleTimeString(),
               details: `${
-                session.not_after && new Date(session.not_after) < new Date()
-                  ? "Session ended"
-                  : "Session started"
+                isActive ? "Session started" : "Session ended"
               } from ${session.ip}`,
             },
           ],
         };
       });
 
-      // Set current session
-      const currentSession = transformedSessions.find(
-        (session) => session.status === "Active"
-      );
+      // Find current active session (most recent active session)
+      const activeSessions = transformedSessions
+        .filter((session) => session.status === "Active")
+        .sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
+
+      const currentSession = activeSessions[0];
+
+      // All other sessions are previous sessions
+      const previousSessions = transformedSessions
+        .filter((session) => session !== currentSession)
+        .sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
 
       setSessions({
-        current: currentSession,
-        history: transformedSessions.filter(
-          (session) => session !== currentSession
-        ),
+        current: currentSession || null,
+        history: previousSessions,
       });
     } catch (error) {
       console.error("Error fetching login history:", error);
