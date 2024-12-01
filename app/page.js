@@ -35,6 +35,11 @@ export default function Home() {
     activeTimeTarget: 8,
     activeTimeCompleted: 0,
   });
+  const [driverRating, setDriverRating] = useState({
+    score: 0,
+    penaltiesSummary: [],
+    showDetails: false,
+  });
 
   const handleToggle = (newState) => {
     setPendingState(newState);
@@ -211,10 +216,64 @@ export default function Home() {
     }
   };
 
+  const calculateRating = (penalties) => {
+    // Start with 5 stars
+    let rating = 5.0;
+
+    // Deduct 0.5 stars for each penalty
+    const totalPenalties = penalties.length;
+    rating = Math.max(1, 5 - totalPenalties * 0.5);
+
+    return Number(rating.toFixed(1));
+  };
+
+  const fetchDriverRating = async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: userData } = await supabase
+        .from("users")
+        .select("id")
+        .eq("auth_id", user.id)
+        .single();
+
+      if (!userData) return;
+
+      const { data: penalties } = await supabase
+        .from("penalties")
+        .select("*")
+        .eq("driver_id", userData.id)
+        .order("created_at", { ascending: false });
+
+      const rating = calculateRating(penalties);
+
+      // Group penalties by severity for the summary
+      const summary = penalties.reduce((acc, penalty) => {
+        if (!acc[penalty.severity]) {
+          acc[penalty.severity] = 0;
+        }
+        acc[penalty.severity]++;
+        return acc;
+      }, {});
+
+      setDriverRating({
+        score: rating,
+        penaltiesSummary: Object.entries(summary),
+        showDetails: false,
+      });
+    } catch (error) {
+      console.error("Error fetching driver rating:", error);
+    }
+  };
+
   useEffect(() => {
     fetchRecentActivity();
     fetchStatistics(selectedTimeframe);
     fetchTodayProgress();
+    fetchDriverRating();
   }, [selectedTimeframe]);
 
   const fetchRecentActivity = async () => {
@@ -280,9 +339,14 @@ export default function Home() {
               })}
             </p>
           </div>
-          <div className="bg-blue-100 px-3 py-1 rounded-full">
+          <div
+            className="bg-blue-100 px-3 py-1 rounded-full cursor-pointer"
+            onClick={() =>
+              setDriverRating((prev) => ({ ...prev, showDetails: true }))
+            }
+          >
             <span className="text-sm text-blue-800 font-medium">
-              Rating: 4.8
+              Rating: {driverRating.score} ★
             </span>
           </div>
         </div>
@@ -664,6 +728,68 @@ export default function Home() {
               >
                 Cancel
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {driverRating.showDetails && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Your Performance Score</h3>
+              <button
+                onClick={() =>
+                  setDriverRating((prev) => ({ ...prev, showDetails: false }))
+                }
+                className="text-gray-500 hover:text-gray-700"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="text-center mb-6">
+              <div className="text-4xl font-bold text-blue-600 mb-2">
+                {driverRating.score} ★
+              </div>
+              <p className="text-gray-600">
+                Your current rating based on last 30 days performance
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <p className="font-medium text-gray-700 mb-2">
+                Recent Incidents:
+              </p>
+              {driverRating.penaltiesSummary.length > 0 ? (
+                driverRating.penaltiesSummary.map(([severity, count]) => (
+                  <div
+                    key={severity}
+                    className="flex justify-between items-center bg-gray-50 p-3 rounded"
+                  >
+                    <span className="capitalize">Priority Issues</span>
+                    <span className="font-medium">
+                      {count} {count === 1 ? "incident" : "incidents"}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-center text-green-600 py-4">
+                  Great job! No incidents reported. Keep up the good work! 🎉
+                </p>
+              )}
+            </div>
+
+            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-800 mb-2 font-medium">
+                How to maintain a good rating:
+              </p>
+              <ul className="text-sm text-blue-700 space-y-2">
+                <li>• Complete deliveries on time</li>
+                <li>• Follow safety guidelines</li>
+                <li>• Maintain professional behavior</li>
+                <li>• Keep your vehicle in good condition</li>
+              </ul>
             </div>
           </div>
         </div>
