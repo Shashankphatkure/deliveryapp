@@ -41,6 +41,8 @@ export default function Home() {
     penaltiesSummary: [],
     showDetails: false,
   });
+  const [activeSession, setActiveSession] = useState(null);
+  const [todayActiveTime, setTodayActiveTime] = useState(0);
 
   const handleToggle = (newState) => {
     setPendingState(newState);
@@ -69,6 +71,35 @@ export default function Home() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
+
+      const { data: userData } = await supabase
+        .from("users")
+        .select("id")
+        .eq("auth_id", user.id)
+        .single();
+
+      if (pendingState) {
+        // Starting a new session
+        const { data: session, error: sessionError } = await supabase
+          .from("driver_sessions")
+          .insert([{ user_id: userData.id }])
+          .select()
+          .single();
+
+        if (sessionError) throw sessionError;
+        setActiveSession(session);
+      } else {
+        // Ending current session
+        if (activeSession) {
+          const { error: updateError } = await supabase
+            .from("driver_sessions")
+            .update({ end_time: new Date().toISOString() })
+            .eq("id", activeSession.id);
+
+          if (updateError) throw updateError;
+          setActiveSession(null);
+        }
+      }
 
       const { error } = await supabase
         .from("users")
@@ -222,7 +253,7 @@ export default function Home() {
       );
 
       // Calculate active time (this is a placeholder - you'll need to implement actual time tracking)
-      const activeTime = 6.5; // This should come from your time tracking system
+      const activeTime = todayActiveTime / 60; // Convert minutes to hours
 
       setProgress({
         ordersTarget: 15,
@@ -313,12 +344,50 @@ export default function Home() {
     }
   };
 
+  const calculateTodayActiveTime = async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: userData } = await supabase
+        .from("users")
+        .select("id")
+        .eq("auth_id", user.id)
+        .single();
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const { data: sessions } = await supabase
+        .from("driver_sessions")
+        .select("*")
+        .eq("user_id", userData.id)
+        .gte("start_time", today.toISOString());
+
+      let totalMinutes = 0;
+      sessions.forEach((session) => {
+        const endTime = session.end_time
+          ? new Date(session.end_time)
+          : new Date();
+        const startTime = new Date(session.start_time);
+        totalMinutes += (endTime - startTime) / (1000 * 60);
+      });
+
+      setTodayActiveTime(totalMinutes);
+    } catch (error) {
+      console.error("Error calculating active time:", error);
+    }
+  };
+
   useEffect(() => {
     fetchDriverModeStatus();
     fetchRecentActivity();
     fetchStatistics(selectedTimeframe);
     fetchTodayProgress();
     fetchDriverRating();
+    calculateTodayActiveTime();
   }, [selectedTimeframe]);
 
   const fetchRecentActivity = async () => {
@@ -368,6 +437,12 @@ export default function Home() {
     }
   };
 
+  const formatActiveTime = (minutes) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = Math.round(minutes % 60);
+    return `${hours}h ${mins}m`;
+  };
+
   return (
     <div className="p-4">
       {/* Header Section */}
@@ -402,7 +477,9 @@ export default function Home() {
         <div className="flex items-center justify-between">
           <div>
             <span className="font-medium">Driver Mode</span>
-            <p className="text-sm text-gray-500">Active time today: 6h 30m</p>
+            <p className="text-sm text-gray-500">
+              Active time today: {formatActiveTime(todayActiveTime)}
+            </p>
             <p className="text-xs text-gray-400 mt-1">Auto-off at 10:00 PM</p>
           </div>
           <div className="flex flex-col items-end">
