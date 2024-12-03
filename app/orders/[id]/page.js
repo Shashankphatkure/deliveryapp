@@ -659,7 +659,7 @@ export default function OrderDetails({ params }) {
             Mark as Delivered
           </button>
         )}
-        {currentStatus !== "cancelled" && (
+        {currentStatus !== "cancelled" && currentStatus !== "delivered" && (
           <button
             onClick={() => setShowCancelModal(true)}
             className="w-full bg-red-500 text-white py-2.5 sm:py-3 rounded-lg font-medium text-sm sm:text-base flex items-center justify-center"
