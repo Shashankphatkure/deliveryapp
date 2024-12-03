@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import "./utils/date";
+import { ArrowPathIcon } from "@heroicons/react/24/outline";
 
 export default function Home() {
   const [isDriverModeOn, setIsDriverModeOn] = useState(false);
@@ -503,7 +504,19 @@ export default function Home() {
       </div>
 
       {/* Timeframe Filter */}
-      <div className="flex space-x-2 mb-4 overflow-x-auto">
+      <div className="flex items-center space-x-2 mb-4 overflow-x-auto">
+        <button
+          onClick={() => {
+            fetchStatistics(selectedTimeframe);
+            fetchRecentActivity();
+            fetchTodayProgress();
+            fetchDriverRating();
+            calculateTodayActiveTime();
+          }}
+          className="p-2 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100"
+        >
+          <ArrowPathIcon className="h-5 w-5" />
+        </button>
         {timeframes.map((timeframe) => (
           <button
             key={timeframe.key}
