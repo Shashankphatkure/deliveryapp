@@ -786,15 +786,16 @@ export default function OrderDetails({ params }) {
                           strokeLinejoin="round"
                         />
                       </svg>
-                      <div className="flex text-sm text-gray-600">
+                      <div className="flex flex-col space-y-2">
+                        {/* Camera button - will open camera on mobile */}
                         <label
-                          htmlFor="file-upload"
-                          className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
+                          htmlFor="camera-capture"
+                          className="relative cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-md font-medium hover:bg-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
                         >
-                          <span>Upload a photo</span>
+                          <span>Take Photo</span>
                           <input
-                            id="file-upload"
-                            name="file-upload"
+                            id="camera-capture"
+                            name="camera-capture"
                             type="file"
                             accept="image/*"
                             capture="environment"
@@ -802,13 +803,11 @@ export default function OrderDetails({ params }) {
                             onChange={(e) => {
                               const file = e.target.files[0];
                               if (file) {
-                                // Validate file size (e.g., max 5MB)
                                 if (file.size > 5 * 1024 * 1024) {
                                   alert("File size must be less than 5MB");
                                   e.target.value = null;
                                   return;
                                 }
-                                // Validate file type
                                 if (!file.type.startsWith("image/")) {
                                   alert("Please upload an image file");
                                   e.target.value = null;
@@ -820,8 +819,39 @@ export default function OrderDetails({ params }) {
                             required
                           />
                         </label>
+
+                        {/* Regular file upload button */}
+                        <label
+                          htmlFor="file-upload"
+                          className="relative cursor-pointer text-blue-600 hover:text-blue-500"
+                        >
+                          <span>or choose existing photo</span>
+                          <input
+                            id="file-upload"
+                            name="file-upload"
+                            type="file"
+                            accept="image/*"
+                            className="sr-only"
+                            onChange={(e) => {
+                              const file = e.target.files[0];
+                              if (file) {
+                                if (file.size > 5 * 1024 * 1024) {
+                                  alert("File size must be less than 5MB");
+                                  e.target.value = null;
+                                  return;
+                                }
+                                if (!file.type.startsWith("image/")) {
+                                  alert("Please upload an image file");
+                                  e.target.value = null;
+                                  return;
+                                }
+                                setPhotoProof(file);
+                              }
+                            }}
+                          />
+                        </label>
                       </div>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-500 mt-2">
                         PNG, JPG, GIF up to 5MB
                       </p>
                     </>
