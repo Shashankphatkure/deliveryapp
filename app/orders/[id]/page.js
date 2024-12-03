@@ -302,6 +302,11 @@ export default function OrderDetails({ params }) {
         return;
       }
 
+      if (!photoProof) {
+        alert("Please upload a delivery photo proof");
+        return;
+      }
+
       // Start with the basic update data
       const updateData = {
         status: "delivered",
@@ -735,27 +740,116 @@ export default function OrderDetails({ params }) {
             {/* Photo Upload */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Upload Delivery Photo Proof
+                Upload Delivery Photo Proof{" "}
+                <span className="text-red-500">*</span>
               </label>
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={(e) => setPhotoProof(e.target.files[0])}
-                className="w-full"
-              />
+              <div
+                className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-lg 
+                ${!photoProof ? 'border-gray-300' : 'border-green-500'}"
+              >
+                <div className="space-y-1 text-center">
+                  {photoProof ? (
+                    <div className="flex flex-col items-center">
+                      <svg
+                        className="w-12 h-12 text-green-500"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      <p className="text-sm text-gray-600">{photoProof.name}</p>
+                      <button
+                        onClick={() => setPhotoProof(null)}
+                        className="mt-2 text-sm text-red-600 hover:text-red-800"
+                      >
+                        Remove photo
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <svg
+                        className="mx-auto h-12 w-12 text-gray-400"
+                        stroke="currentColor"
+                        fill="none"
+                        viewBox="0 0 48 48"
+                      >
+                        <path
+                          d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      <div className="flex text-sm text-gray-600">
+                        <label
+                          htmlFor="file-upload"
+                          className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
+                        >
+                          <span>Upload a photo</span>
+                          <input
+                            id="file-upload"
+                            name="file-upload"
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            className="sr-only"
+                            onChange={(e) => {
+                              const file = e.target.files[0];
+                              if (file) {
+                                // Validate file size (e.g., max 5MB)
+                                if (file.size > 5 * 1024 * 1024) {
+                                  alert("File size must be less than 5MB");
+                                  e.target.value = null;
+                                  return;
+                                }
+                                // Validate file type
+                                if (!file.type.startsWith("image/")) {
+                                  alert("Please upload an image file");
+                                  e.target.value = null;
+                                  return;
+                                }
+                                setPhotoProof(file);
+                              }
+                            }}
+                            required
+                          />
+                        </label>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        PNG, JPG, GIF up to 5MB
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+              {!photoProof && (
+                <p className="mt-1 text-sm text-red-500">
+                  Photo proof is required to complete delivery
+                </p>
+              )}
             </div>
 
             <div className="flex space-x-3">
               <button
                 onClick={handleDeliverySubmit}
-                className="flex-1 bg-green-500 text-white py-2 rounded-lg"
+                disabled={!deliveryMethod || !photoProof}
+                className={`flex-1 py-2 rounded-lg ${
+                  !deliveryMethod || !photoProof
+                    ? "bg-gray-300 cursor-not-allowed"
+                    : "bg-green-500 hover:bg-green-600"
+                } text-white`}
               >
                 Complete Delivery
               </button>
               <button
                 onClick={() => setShowDeliveryModal(false)}
-                className="flex-1 bg-gray-100 py-2 rounded-lg"
+                className="flex-1 bg-gray-100 hover:bg-gray-200 py-2 rounded-lg"
               >
                 Cancel
               </button>
