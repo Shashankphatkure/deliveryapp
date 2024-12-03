@@ -191,6 +191,35 @@ const getStatusIndex = (status) => {
   return orderSequence.indexOf(status);
 };
 
+const openGoogleMapsNavigation = (destination) => {
+  // Check if geolocation is supported
+  if (!navigator.geolocation) {
+    alert("Geolocation is not supported by your browser");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const { latitude, longitude } = position.coords;
+      const origin = `${latitude},${longitude}`;
+      // Create Google Maps URL with origin and destination
+      const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${encodeURIComponent(
+        destination
+      )}`;
+      // Open in new tab
+      window.open(url, "_blank");
+    },
+    (error) => {
+      console.error("Error getting location:", error);
+      // Fallback: Open navigation without current location
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+        destination
+      )}`;
+      window.open(url, "_blank");
+    }
+  );
+};
+
 export default function OrderDetails({ params }) {
   const unwrappedParams = use(params);
   const { id } = unwrappedParams;
@@ -578,7 +607,25 @@ export default function OrderDetails({ params }) {
                   </p>
                   <p className="text-sm text-gray-600">{order.start}</p>
                 </div>
-                <button className="text-blue-600 text-sm">Navigate</button>
+                <button
+                  onClick={() => openGoogleMapsNavigation(order.start)}
+                  className="text-blue-600 text-sm hover:text-blue-800 flex items-center"
+                >
+                  <svg
+                    className="w-4 h-4 mr-1"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+                    />
+                  </svg>
+                  Navigate
+                </button>
               </div>
               <p className="text-sm text-gray-500 mt-1">
                 Contact: {order.store?.phone || "N/A"}
@@ -616,7 +663,25 @@ export default function OrderDetails({ params }) {
                   </p>
                   <p className="text-sm text-gray-600">{order.destination}</p>
                 </div>
-                <button className="text-blue-600 text-sm">Navigate</button>
+                <button
+                  onClick={() => openGoogleMapsNavigation(order.destination)}
+                  className="text-blue-600 text-sm hover:text-blue-800 flex items-center"
+                >
+                  <svg
+                    className="w-4 h-4 mr-1"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+                    />
+                  </svg>
+                  Navigate
+                </button>
               </div>
               <p className="text-sm text-gray-500 mt-1">
                 Contact: {order.customer?.phone || "N/A"}
