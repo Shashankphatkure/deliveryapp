@@ -707,6 +707,9 @@ export default function Home() {
                           ? activity.remark || "Cancelled"
                           : "In Progress"}
                       </span>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Status: {activity.status}
+                      </p>
                     </div>
                   </div>
                   <div className="text-right">
