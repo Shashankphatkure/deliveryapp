@@ -189,6 +189,7 @@ export default function Orders() {
             "confirmed",
             "accepted",
             "on_way",
+            "reached",
           ].includes(order.status)
         ),
         completed: data.filter((order) =>
