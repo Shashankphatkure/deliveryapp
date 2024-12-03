@@ -633,8 +633,57 @@ export default function OrderDetails({ params }) {
             </div>
           </div>
 
-          {/* Dotted Line */}
-          <div className="ml-4 border-l-2 border-dashed h-8 border-gray-200"></div>
+          {/* Dotted Line with Distance and Time */}
+          <div className="flex">
+            <div className="ml-4 border-l-2 border-dashed h-8 border-gray-200"></div>
+            <div className="flex-1 ml-3 -mt-2">
+              {(order.distance || order.time) && (
+                <div className="bg-gray-50 rounded-lg p-2 inline-block">
+                  <div className="flex items-center space-x-3 text-sm text-gray-600">
+                    {order.distance && (
+                      <div className="flex items-center">
+                        <svg
+                          className="w-4 h-4 mr-1"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                          />
+                        </svg>
+                        {order.distance}
+                      </div>
+                    )}
+                    {order.distance && order.time && (
+                      <span className="text-gray-300">•</span>
+                    )}
+                    {order.time && (
+                      <div className="flex items-center">
+                        <svg
+                          className="w-4 h-4 mr-1"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        {order.time}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Drop Location */}
           <div className="flex">
