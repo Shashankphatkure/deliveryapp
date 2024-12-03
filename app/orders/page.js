@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { ArrowPathIcon } from "@heroicons/react/24/outline";
 
 export default function Orders() {
   const [activeTab, setActiveTab] = useState("active");
@@ -236,12 +237,20 @@ export default function Orders() {
     <div className="p-4">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">Orders</h1>
-        <input
-          type="date"
-          value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
-          className="border rounded-lg px-3 py-2"
-        />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={fetchOrders}
+            className="p-2 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100"
+          >
+            <ArrowPathIcon className="h-5 w-5" />
+          </button>
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="border rounded-lg px-3 py-2"
+          />
+        </div>
       </div>
 
       {/* Quick Stats */}
