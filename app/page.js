@@ -554,7 +554,7 @@ export default function Home() {
       <div className="bg-white rounded-lg shadow mb-6">
         <div className="p-4 border-b flex justify-between items-center">
           <h2 className="font-semibold">Today's Progress</h2>
-          <Link href="/ways-to-earn" className="text-blue-500 text-sm">
+          <Link href="/profile/ways-to-earn" className="text-blue-500 text-sm">
             View Targets
           </Link>
         </div>
@@ -662,7 +662,7 @@ export default function Home() {
       <div className="bg-white rounded-lg shadow">
         <div className="p-4 border-b flex justify-between items-center">
           <h2 className="font-semibold">Recent Activity</h2>
-          <Link href="/notifications" className="text-blue-500 text-sm">
+          <Link href="/orders" className="text-blue-500 text-sm">
             View All
           </Link>
         </div>
