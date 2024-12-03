@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { ArrowPathIcon } from "@heroicons/react/24/outline";
 
 export default function Penalties() {
   const supabase = createClientComponentClient();
@@ -119,7 +120,15 @@ export default function Penalties() {
 
   return (
     <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Penalties</h1>
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Penalties</h1>
+        <button
+          onClick={fetchPenalties}
+          className="p-2 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100"
+        >
+          <ArrowPathIcon className="h-5 w-5" />
+        </button>
+      </div>
 
       {/* Penalties Summary */}
       <div className="bg-white rounded-lg shadow p-4 mb-4">

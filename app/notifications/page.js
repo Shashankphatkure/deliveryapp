@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { formatInTimeZone } from "date-fns-tz";
 import { useRouter } from "next/navigation";
+import { ArrowPathIcon } from "@heroicons/react/24/outline";
 
 export default function Notifications() {
   const [activeFilter, setActiveFilter] = useState("all");
@@ -11,62 +12,62 @@ export default function Notifications() {
   const supabase = createClientComponentClient();
   const router = useRouter();
 
-  // Fetch notifications
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        setLoading(true);
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-        if (!user) {
-          setLoading(false);
-          return;
-        }
-
-        // First get the user's ID from users table using auth_id
-        const { data: userData, error: userError } = await supabase
-          .from("users")
-          .select("id")
-          .eq("auth_id", user.id)
-          .single();
-
-        if (userError) {
-          console.error("Error fetching user:", userError);
-          setLoading(false);
-          return;
-        }
-
-        if (!userData) {
-          console.error("User not found");
-          setLoading(false);
-          return;
-        }
-
-        // Then fetch notifications using the user's ID
-        const { data: notificationsData, error: notificationsError } =
-          await supabase
-            .from("notifications")
-            .select("*")
-            .eq("recipient_id", userData.id)
-            .eq("recipient_type", "driver")
-            .order("created_at", { ascending: false });
-
-        if (notificationsError) {
-          console.error("Error fetching notifications:", notificationsError);
-          setLoading(false);
-          return;
-        }
-
-        setNotifications(notificationsData || []);
-      } catch (error) {
-        console.error("Unexpected error:", error);
-      } finally {
+      if (!user) {
         setLoading(false);
+        return;
       }
-    };
 
+      // First get the user's ID from users table using auth_id
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("auth_id", user.id)
+        .single();
+
+      if (userError) {
+        console.error("Error fetching user:", userError);
+        setLoading(false);
+        return;
+      }
+
+      if (!userData) {
+        console.error("User not found");
+        setLoading(false);
+        return;
+      }
+
+      // Then fetch notifications using the user's ID
+      const { data: notificationsData, error: notificationsError } =
+        await supabase
+          .from("notifications")
+          .select("*")
+          .eq("recipient_id", userData.id)
+          .eq("recipient_type", "driver")
+          .order("created_at", { ascending: false });
+
+      if (notificationsError) {
+        console.error("Error fetching notifications:", notificationsError);
+        setLoading(false);
+        return;
+      }
+
+      setNotifications(notificationsData || []);
+    } catch (error) {
+      console.error("Unexpected error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Use the function in useEffect
+  useEffect(() => {
     fetchNotifications();
   }, []);
 
@@ -200,7 +201,15 @@ export default function Notifications() {
 
   return (
     <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Notifications</h1>
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Notifications</h1>
+        <button
+          onClick={fetchNotifications}
+          className="p-2 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100"
+        >
+          <ArrowPathIcon className="h-5 w-5" />
+        </button>
+      </div>
 
       {/* Notification Filters */}
       <div className="flex space-x-2 mb-4 overflow-x-auto">
