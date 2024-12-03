@@ -287,7 +287,9 @@ export default function OrderDetails({ params }) {
             address,
             homeaddress,
             workaddress
-          )
+          ),
+          distance,
+          estimated_time
         `
         )
         .eq("id", id)
@@ -456,6 +458,17 @@ export default function OrderDetails({ params }) {
           </svg>
         </button>
         <h1 className="text-xl sm:text-2xl font-bold">Order #{order.id}</h1>
+      </div>
+
+      {/* Order Distance and Time */}
+      <div className="bg-white rounded-lg shadow p-3 sm:p-4 mb-4">
+        <h2 className="font-semibold mb-2">Order Details</h2>
+        <p className="text-sm text-gray-600">
+          Distance: {order.distance || "N/A"} km
+        </p>
+        <p className="text-sm text-gray-600">
+          Estimated Time: {order.estimated_time || "N/A"} mins
+        </p>
       </div>
 
       {/* Only show status-related components if order is not cancelled */}
