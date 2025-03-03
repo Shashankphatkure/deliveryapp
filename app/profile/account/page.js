@@ -188,14 +188,14 @@ export default function AccountSettings() {
     <div className="p-4">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Account Settings</h1>
-        <button
+        {/* <button
           onClick={() => setIsEditing(!isEditing)}
           className={`px-4 py-2 rounded-lg ${
             isEditing ? "bg-gray-200 text-gray-600" : "bg-blue-500 text-white"
           }`}
         >
           {isEditing ? "Cancel" : "Edit Profile"}
-        </button>
+        </button> */}
       </div>
 
       {/* Profile Header */}
