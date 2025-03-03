@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import "./utils/date";
+import "./utils/date.js";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
 
 export default function Home() {
@@ -175,6 +176,11 @@ export default function Home() {
         .eq("driverid", userData.id)
         .gte("created_at", start.toISOString())
         .lte("created_at", end.toISOString());
+
+      if (!currentOrders) {
+        console.error("No orders data returned");
+        return;
+      }
 
       // Calculate statistics
       const completed = currentOrders.filter(
@@ -383,6 +389,26 @@ export default function Home() {
   };
 
   useEffect(() => {
+    // Add Date prototype extension for toRelative if it doesn't exist
+    if (!Date.prototype.toRelative) {
+      Date.prototype.toRelative = function() {
+        const now = new Date();
+        const diffMs = now - this;
+        const diffSec = Math.round(diffMs / 1000);
+        const diffMin = Math.round(diffSec / 60);
+        const diffHour = Math.round(diffMin / 60);
+        const diffDay = Math.round(diffHour / 24);
+        
+        if (diffSec < 60) return `${diffSec} seconds ago`;
+        if (diffMin < 60) return `${diffMin} minutes ago`;
+        if (diffHour < 24) return `${diffHour} hours ago`;
+        if (diffDay === 1) return 'yesterday';
+        if (diffDay < 30) return `${diffDay} days ago`;
+        
+        return this.toLocaleDateString();
+      };
+    }
+    
     fetchDriverModeStatus();
     fetchRecentActivity();
     fetchStatistics(selectedTimeframe);
@@ -540,10 +566,10 @@ export default function Home() {
             ₹{statistics.earnings.toFixed(2)}
           </p>
           <div className="flex items-center mt-1">
-            <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-              {statistics.earningsChange > 0
+            <span className={`text-xs ${statistics.earningsChange >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} px-2 py-0.5 rounded-full`}>
+              {statistics.earningsChange >= 0
                 ? `+₹${statistics.earningsChange.toFixed(2)}`
-                : `₹${statistics.earningsChange.toFixed(2)}`}{" "}
+                : `-₹${Math.abs(statistics.earningsChange).toFixed(2)}`}{" "}
               from yesterday
             </span>
           </div>
@@ -690,9 +716,9 @@ export default function Home() {
             recentActivity.map((activity) => (
               <div key={activity.id} className="p-4">
                 <div className="flex justify-between items-start">
-                  <div className="flex items-start">
+                  <div className="flex items-start flex-1 min-w-0 mr-2">
                     <div
-                      className={`w-2 h-2 rounded-full mt-2 mr-3 ${
+                      className={`w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0 ${
                         activity.status === "completed"
                           ? "bg-green-500"
                           : activity.status === "cancelled"
@@ -700,8 +726,8 @@ export default function Home() {
                           : "bg-yellow-500"
                       }`}
                     ></div>
-                    <div>
-                      <p className="font-medium">Order #{activity.id}</p>
+                    <div className="truncate">
+                      <p className="font-medium truncate">Order #{activity.id}</p>
                       <p className="text-sm text-gray-500">
                         {new Date(activity.created_at).toRelative()}
                       </p>
@@ -725,7 +751,7 @@ export default function Home() {
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right flex-shrink-0">
                     <span
                       className={`font-medium ${
                         activity.status === "completed"
@@ -736,8 +762,8 @@ export default function Home() {
                       }`}
                     >
                       {activity.status === "completed"
-                        ? `₹${activity.total_amount}`
-                        : "₹0"}
+                        ? `₹${activity.total_amount ? activity.total_amount.toFixed(2) : '0.00'}`
+                        : "₹0.00"}
                     </span>
                     <p className="text-xs text-gray-500 mt-1">
                       {activity.status === "completed"
@@ -756,8 +782,8 @@ export default function Home() {
 
       {/* Modified Confirmation Modal */}
       {showConfirmModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-sm mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-sm">
             <h3 className="text-lg font-semibold mb-2">
               {pendingState ? "Turn On Driver Mode?" : "Turn Off Driver Mode?"}
             </h3>
@@ -840,10 +866,10 @@ export default function Home() {
               </label>
             </div>
 
-            <div className="flex space-x-3">
+            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
               <button
                 onClick={confirmToggle}
-                className={`flex-1 py-2 rounded-lg ${
+                className={`py-2 rounded-lg w-full ${
                   pendingState
                     ? "bg-green-500 text-white"
                     : "bg-red-500 text-white"
@@ -862,7 +888,7 @@ export default function Home() {
                     phone: false,
                   });
                 }}
-                className="flex-1 py-2 bg-gray-100 rounded-lg"
+                className="py-2 bg-gray-100 rounded-lg w-full"
               >
                 Cancel
               </button>
@@ -872,8 +898,8 @@ export default function Home() {
       )}
 
       {driverRating.showDetails && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Your Performance Score</h3>
               <button
